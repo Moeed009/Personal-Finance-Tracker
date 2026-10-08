@@ -28,6 +28,10 @@ ALIASES = {
         "txn date",
         "posted date",
         "value date",
+        "timestamp",
+        "date time",
+        "datetime",
+        "transaction time",
     ),
     "description": (
         "description",
@@ -204,14 +208,26 @@ def parse_date(
         else DATE_FORMATS
     )
 
-    for fmt in formats:
-        try:
-            return datetime.strptime(
-                value,
-                fmt,
-            ).date()
-        except ValueError:
-            continue
+    # Statements often append a time ("08 Sep 2026 03:26 PM"), so also try
+    # the value with the time part removed.
+    parts = value.replace("T", " ").split()
+    candidates = [value]
+
+    for count in (3, 1):
+        candidate = " ".join(parts[:count])
+
+        if candidate and candidate not in candidates:
+            candidates.append(candidate)
+
+    for candidate in candidates:
+        for fmt in formats:
+            try:
+                return datetime.strptime(
+                    candidate,
+                    fmt,
+                ).date()
+            except ValueError:
+                continue
 
     raise ValueError("invalid date format")
 
@@ -258,9 +274,9 @@ def _parse_row(
     TransactionType,
     Decimal | None,
 ]:
-    description = (
-        row.get(mapping.description) or ""
-    ).strip()
+    description = " ".join(
+        (row.get(mapping.description) or "").split()
+    )
 
     if not description:
         raise ValueError("description is required")
@@ -297,6 +313,17 @@ def _parse_row(
             txn_type = TYPE_WORDS.get(
                 row[mapping.type].strip().lower()
             )
+
+            # Bank-specific types ("Raast In", "POS") are not income/expense
+            # words; a signed amount (+270 / -270) already tells us which.
+            if txn_type is None and _has_sign(
+                row[mapping.amount]
+            ):
+                txn_type = (
+                    TransactionType.EXPENSE
+                    if amount < 0
+                    else TransactionType.INCOME
+                )
 
             if txn_type is None:
                 raise ValueError(
@@ -357,19 +384,35 @@ def parse_csv(
     text: str,
     requested: ColumnMapping,
 ) -> ParseResult:
-    reader = csv.DictReader(
-        io.StringIO(text)
+    records = [
+        record
+        for record in csv.reader(io.StringIO(text))
+    ]
+
+    header_index = _find_header_index(
+        records,
+        requested,
     )
 
-    if not reader.fieldnames:
+    if header_index is None:
         raise BadRequestError(
             "CSV file is empty"
         )
 
+    headers = [
+        cell.strip()
+        for cell in records[header_index]
+    ]
+
     mapping = resolve_columns(
-        list(reader.fieldnames),
+        headers,
         requested,
     )
+
+    data_rows = [
+        dict(zip(headers, record))
+        for record in records[header_index + 1:]
+    ]
 
     mapped_columns = {
         column
@@ -387,8 +430,8 @@ def parse_csv(
     result = ParseResult()
 
     for line_number, row in enumerate(
-        reader,
-        start=2,
+        data_rows,
+        start=header_index + 2,
     ):
         if not any(
             (value or "").strip()
@@ -476,3 +519,53 @@ def _is_zero_or_empty_amount(
         return parse_amount(value) == 0
     except ValueError:
         return False
+
+
+def _has_sign(text: str) -> bool:
+    value = text.strip()
+
+    return value.startswith(("+", "-", "("))
+
+
+def _find_header_index(
+    records: list[list[str]],
+    requested: ColumnMapping,
+) -> int | None:
+    """Locate the header row.
+
+    Bank statements often start with account details (name, IBAN, statement
+    period) before the real table, so the header is the first row that has
+    both a date column and a description column. If no row qualifies, fall
+    back to the first non-empty row so the usual error is reported.
+    """
+    first_non_empty = None
+
+    for index, record in enumerate(records):
+        cells = {
+            cell.strip().lower()
+            for cell in record
+            if cell.strip()
+        }
+
+        if not cells:
+            continue
+
+        if first_non_empty is None:
+            first_non_empty = index
+
+        wanted_date = (
+            {requested.date.strip().lower()}
+            if requested.date
+            else set(ALIASES["date"])
+        )
+
+        wanted_description = (
+            {requested.description.strip().lower()}
+            if requested.description
+            else set(ALIASES["description"])
+        )
+
+        if cells & wanted_date and cells & wanted_description:
+            return index
+
+    return first_non_empty
