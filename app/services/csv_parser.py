@@ -177,7 +177,7 @@ def parse_amount(text: str) -> Decimal:
         and value.endswith(")")
     ) or value.startswith("-")
 
-    cleaned = re.sub(r"[A-Za-z]+", "", value)
+    cleaned = re.sub(r"[A-Za-z]+\.?", "", value)
     digits = re.sub(r"[^\d.]", "", cleaned)
 
     if not digits:
@@ -531,13 +531,7 @@ def _find_header_index(
     records: list[list[str]],
     requested: ColumnMapping,
 ) -> int | None:
-    """Locate the header row.
-
-    Bank statements often start with account details (name, IBAN, statement
-    period) before the real table, so the header is the first row that has
-    both a date column and a description column. If no row qualifies, fall
-    back to the first non-empty row so the usual error is reported.
-    """
+    
     first_non_empty = None
 
     for index, record in enumerate(records):
