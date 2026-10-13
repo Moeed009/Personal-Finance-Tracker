@@ -22,7 +22,7 @@ from app.models.account import Account
 from app.models.import_batch import ImportBatch
 from app.models.transaction import Transaction, TransactionType
 from app.schemas.imports import ImportSummary, RowError
-from app.services import account_service
+from app.services import account_service, own_transfers
 from app.services.categorization import CategoryResolver, derive_merchant, normalize
 from app.services.pdf_parser import pdf_to_csv_text
 from app.services.csv_parser import (
@@ -262,6 +262,14 @@ def import_csv(
         db.rollback()
         storage.remove_files([batch.storage_path])
         raise
+
+    # Moves between the user's own accounts are transfers, not income or
+    # spending. The import is already saved, so a failure here only logs.
+    try:
+        own_transfers.mark_own_transfers(db, user_id)
+    except Exception:
+        db.rollback()
+        logger.exception("Could not mark own transfers after import")
 
     return ImportSummary(
         batch_id=batch.id,

@@ -64,6 +64,10 @@ class TransferCreate(BaseModel):
     description: str = Field(default="Transfer", min_length=1, max_length=300)
 
 
+class OwnTransfersResult(BaseModel):
+    marked: int
+
+
 class TransferRead(BaseModel):
     transfer_group_id: uuid.UUID
     outgoing: TransactionRead
