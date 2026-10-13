@@ -173,17 +173,21 @@ def request_password_reset(email: str) -> None:
         logger.error("Password reset email failed", exc_info=True)
 
 
-def reset_password(access_token: str, new_password: str) -> None:
+def reset_password(token_hash: str, new_password: str) -> None:
+    
     try:
-        user_response = get_anon_client().auth.get_user(access_token)
+        result = get_anon_client().auth.verify_otp(
+            {"type": "recovery", "token_hash": token_hash}
+        )
     except AuthApiError as exc:
         raise BadRequestError(RESET_LINK_INVALID) from exc
     except AuthError as exc:
         raise ExternalServiceError("Authentication service error") from exc
 
-    user = user_response.user
+    user = result.user
+    session = result.session
 
-    if user is None:
+    if user is None or session is None:
         raise BadRequestError(RESET_LINK_INVALID)
 
     try:
@@ -197,13 +201,12 @@ def reset_password(access_token: str, new_password: str) -> None:
         raise ExternalServiceError("Authentication service error") from exc
 
     try:
-        get_admin_client().auth.admin.sign_out(access_token, "global")
+        get_admin_client().auth.admin.sign_out(session.access_token, "global")
     except Exception:
         logger.warning(
             "Could not revoke sessions after password reset",
             exc_info=True,
         )
-
 
 
 def reset_password_with_session(
