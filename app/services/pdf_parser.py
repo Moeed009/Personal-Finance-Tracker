@@ -20,7 +20,16 @@ RULED = {"vertical_strategy": "lines", "horizontal_strategy": "lines"}
 
 LINE_TOLERANCE = 3  # points: words this close vertically are on one line
 HEADER_WORD_GAP = 6  # points: closer header words form one name ("Txn Date")
+HEADER_LINE_GAP = 16  # points: a header's second line ("Value" / "Date")
 NUMBER = re.compile(r"^[+\-(]?(rs\.?|pkr)?\s?[\d,]+(\.\d+)?\)?(cr|dr)?$", re.IGNORECASE)
+
+
+# Rows that are not transactions.
+PAGE_ROW = re.compile(
+    r"^(brought forward|carried forward|balance (b/f|c/f|brought forward|carried forward)|page \d+( of \d+)?)\b"
+)
+OPENING_ROW = re.compile(r"^(opening balance|balance brought forward|b/f balance)\b")
+END_ROW = re.compile(r"^(closing balance|totals?\b)")
 
 
 def pdf_to_csv_text(content: bytes, password: str | None = None) -> str:
@@ -65,9 +74,15 @@ def tables_to_csv(tables: list[Table]) -> str:
     """Join the extracted tables into one CSV, starting at the header row.
 
     Returns an empty string when no header row (a date column and a
-    description column) is found. Header rows repeated on later pages are
-    dropped, and a description that wrapped onto its own line is joined back
-    onto the row above it.
+    description column) is found. Along the way it:
+
+    - drops header rows repeated on later pages,
+    - folds columns the parser does not use (such as "Instrument / Doc No.")
+      into the description, since banks often print the description across
+      them,
+    - joins a description that wrapped onto following lines back onto its row,
+    - drops page furniture such as "Brought Forward" or "Page 2 of 5", and
+      stops at the closing balance or totals row.
     """
     rows = [
         [_clean(cell) for cell in row]
@@ -85,25 +100,41 @@ def tables_to_csv(tables: list[Table]) -> str:
     names = [cell.lower() for cell in header]
     date_col = _column(names, "date")
     description_col = _column(names, "description")
+    known = {alias for aliases in ALIASES.values() for alias in aliases}
+    folded = {i for i, name in enumerate(names) if name not in known}
+    keep = [i for i in range(len(header)) if i not in folded]
+    description_parts = sorted(folded | {description_col})
 
-    output: list[list[str]] = [header]
+    output: list[list[str]] = [[header[i] for i in keep]]
+    out_date = keep.index(date_col)
+    out_description = keep.index(description_col)
 
     for row in rows[header_at + 1:]:
         if [cell.lower() for cell in row] == names:
             continue
 
         row = (row + [""] * len(header))[: len(header)]
+        row[description_col] = " ".join(row[i] for i in description_parts if row[i])
+        row = [row[i] for i in keep]
+        description = row[out_description].lower()
 
-        if (
-            len(output) > 1
-            and not row[date_col]
-            and row[description_col]
-            and not any(
-                cell for i, cell in enumerate(row) if i != description_col
+        if END_ROW.match(description):
+            break
+
+        if OPENING_ROW.match(description) or (not row[out_date] and PAGE_ROW.match(description)):
+            continue
+
+        if not row[out_date]:
+            is_wrapped_text = row[out_description] and not any(
+                cell for i, cell in enumerate(row) if i != out_description
             )
-        ):
-            previous = output[-1]
-            previous[description_col] = f"{previous[description_col]} {row[description_col]}".strip()
+
+            if is_wrapped_text and len(output) > 1:
+                previous = output[-1]
+                previous[out_description] = f"{previous[out_description]} {row[out_description]}".strip()
+
+            # A dateless row that is not wrapped text is a subtotal or
+            # carried-forward balance, not a transaction.
             continue
 
         output.append(row)
@@ -119,29 +150,49 @@ def _layout_tables(pages) -> list[Table]:
     The header row fixes the columns: a word belongs to the last column whose
     header starts at or before it. Right-aligned amounts can start left of
     their header, so a number that reaches into a later column belongs there.
+    A header split over two lines ("Value" / "Date") is joined, and on each
+    page everything above the header (the bank's letterhead) is ignored.
     """
     tables: list[Table] = []
     columns: list[tuple[str, float]] | None = None
 
     for page in pages:
+        lines = _lines(page.extract_words())
         rows: Table = []
+        start = 0
 
-        for line in _lines(page.extract_words()):
+        for index, line in enumerate(lines):
             header = _header_cells(line)
 
             if _is_header([name for name, _ in header]):
                 columns = header
-                rows.append([name for name, _ in columns])
-                continue
+                names = [name for name, _ in columns]
+                start = index + 1
 
-            if columns is None:
-                continue
+                second = lines[index + 1] if index + 1 < len(lines) else []
 
+                if (
+                    second
+                    and second[0]["top"] - line[0]["top"] < HEADER_LINE_GAP
+                    and not any(ch.isdigit() for word in second for ch in word["text"])
+                ):
+                    for word in second:
+                        column = _column_for(word, columns)
+                        names[column] = f"{names[column]} {word['text']}"
+                    start = index + 2
+
+                rows.append(names)
+                break
+
+        if columns is None:
+            continue
+
+        for line in lines[start:]:
             cells = [""] * len(columns)
 
             for word in line:
-                index = _column_for(word, columns)
-                cells[index] = f"{cells[index]} {word['text']}".strip()
+                column = _column_for(word, columns)
+                cells[column] = f"{cells[column]} {word['text']}".strip()
 
             rows.append(cells)
 

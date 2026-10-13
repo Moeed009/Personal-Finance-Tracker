@@ -248,3 +248,25 @@ class TestPdfTables:
 
     def test_no_header_gives_empty_text(self):
         assert tables_to_csv([[["Name", "Value"], ["a", "1"]]]) == ""
+
+    def test_bank_layout_with_folded_columns_and_page_furniture(self):
+        page = [
+            ["DATE", "INSTRUMENT/ DOC NO.", "DETAILS", "DEBIT", "CREDIT", "BALANCE"],
+            [None, "Brought Forward", None, None, None, "1,811.53"],
+            ["31/08/2026", None, "Opening Balance", None, None, "427.53"],
+            ["14/09/2026", "4187154691 RAAST", "P2P FT, Digital", "1,130.00", None, "681.53"],
+            [None, "PK51ASCM000063,", "USAMA", None, None, None],
+            [None, "RAFIQUE", None, None, None, None],
+            [None, None, None, None, None, "681.53"],
+            [None, "Carried Forward", None, None, None, None],
+            [None, "Page 1 of 5", None, None, None, None],
+            ["30/09/2026", None, "Closing Balance", None, None, "681.53"],
+            [None, "Totals:", None, "1,130.00", None, None],
+        ]
+        result = parse_csv(tables_to_csv([page]), ColumnMapping())
+
+        assert result.errors == []
+        assert len(result.rows) == 1
+        assert result.rows[0].description == "4187154691 RAAST P2P FT, Digital PK51ASCM000063, USAMA RAFIQUE"
+        assert result.rows[0].type == EXPENSE
+        assert result.rows[0].amount == Decimal("1130.00")
