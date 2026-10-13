@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Trash2, Unlink } from 'lucide-react'
 import { formatDay, formatMoney } from '@/lib/format'
 import type { Account, Category, Transaction } from '@/types/api'
 
@@ -10,6 +10,7 @@ interface TransactionTableProps {
   currency: string
   onEdit: (transaction: Transaction) => void
   onDelete: (transaction: Transaction) => void
+  onNotTransfer?: (transaction: Transaction) => void
 }
 
 function Badge({ children }: { children: ReactNode }) {
@@ -24,7 +25,7 @@ function categoryLabel(transaction: Transaction, categories: Map<string, Categor
   return categories.get(transaction.category_id)?.name ?? 'Removed category'
 }
 
-export function TransactionTable({ items, accounts, categories, currency, onEdit, onDelete }: TransactionTableProps) {
+export function TransactionTable({ items, accounts, categories, currency, onEdit, onDelete, onNotTransfer }: TransactionTableProps) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[720px] text-left text-sm">
@@ -75,6 +76,16 @@ export function TransactionTable({ items, accounts, categories, currency, onEdit
                       aria-label={`Edit ${transaction.description}`}
                     >
                       <Pencil size={16} />
+                    </button>
+                  )}
+                  {isTransfer && transaction.import_batch_id && onNotTransfer && (
+                    <button
+                      onClick={() => onNotTransfer(transaction)}
+                      className="rounded-md p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                      aria-label={`${transaction.description} is not a transfer between my accounts`}
+                      title="Not a transfer: count it as income or expense again"
+                    >
+                      <Unlink size={16} />
                     </button>
                   )}
                   <button

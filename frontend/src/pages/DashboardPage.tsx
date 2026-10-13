@@ -22,19 +22,23 @@ function greeting(): string {
   return 'Good evening'
 }
 
-function SavingsRing({ percent }: { percent: number }) {
-  const shown = Math.min(Math.max(percent, 0), 100)
+function SavingsRing({ percent, overspent }: { percent: number; overspent: boolean }) {
+  const shown = overspent ? 0 : Math.min(Math.max(percent, 0), 100)
 
   return (
     <div
       role="img"
-      aria-label={`${percent.toFixed(0)} percent of income saved`}
+      aria-label={overspent ? 'Spent more than earned' : `${percent.toFixed(0)} percent of income saved`}
       className="flex h-28 w-28 shrink-0 items-center justify-center rounded-full"
       style={{ background: `conic-gradient(#34d399 0 ${shown}%, rgba(255,255,255,0.07) ${shown}% 100%)` }}
     >
       <div className="flex h-[5.5rem] w-[5.5rem] flex-col items-center justify-center rounded-full bg-[#0e1714]">
-        <span className="font-display text-2xl font-bold text-slate-900">{percent.toFixed(0)}%</span>
-        <span className="text-[11px] text-slate-500">of income</span>
+        {overspent ? (
+          <span className="font-display text-lg font-bold text-rose-700">Over</span>
+        ) : (
+          <span className="font-display text-2xl font-bold text-slate-900">{percent.toFixed(0)}%</span>
+        )}
+        <span className="text-[11px] text-slate-500">{overspent ? 'income' : 'of income'}</span>
       </div>
     </div>
   )
@@ -129,10 +133,14 @@ export default function DashboardPage() {
             {summary.data && (
               <span
                 className={`rounded-full px-2.5 py-1 text-xs font-bold ${
-                  savingsRate >= 20 ? 'bg-emerald-500/15 text-emerald-700' : 'bg-amber-500/15 text-amber-700'
+                  savings < 0
+                    ? 'bg-rose-500/15 text-rose-700'
+                    : savingsRate >= 20
+                      ? 'bg-emerald-500/15 text-emerald-700'
+                      : 'bg-amber-500/15 text-amber-700'
                 }`}
               >
-                {savingsRate >= 20 ? 'On track' : 'Below 20%'}
+                {savings < 0 ? 'Overspent' : savingsRate >= 20 ? 'On track' : 'Below 20%'}
               </span>
             )}
           </div>
@@ -140,15 +148,16 @@ export default function DashboardPage() {
             <div className="h-28 animate-pulse rounded-2xl bg-slate-100" />
           ) : (
             <div className="flex items-center gap-5">
-              <SavingsRing percent={savingsRate} />
+              <SavingsRing percent={savingsRate} overspent={savings < 0} />
               <div className="flex flex-col gap-1.5">
                 <span
                   className={`font-display text-xl font-semibold ${savings >= 0 ? 'text-slate-900' : 'text-rose-700'}`}
                 >
-                  {formatMoney(savings, currency)}
+                  {formatMoney(Math.abs(savings), currency)}
                 </span>
                 <span className="text-sm leading-relaxed text-slate-500">
-                  saved from {summary.data ? formatMoney(summary.data.income, currency) : '—'} income
+                  {savings >= 0 ? 'saved from ' : 'more spent than '}
+                  {summary.data ? formatMoney(summary.data.income, currency) : '—'} income
                 </span>
               </div>
             </div>
@@ -181,7 +190,13 @@ export default function DashboardPage() {
           tone={savings > 0 ? 'positive' : savings < 0 ? 'negative' : 'default'}
           isLoading={summary.isLoading}
           value={summary.data ? formatMoney(savings, currency) : undefined}
-          hint={summary.data ? `${savingsRate.toFixed(0)}% of income saved` : undefined}
+          hint={
+            summary.data
+              ? savings < 0
+                ? 'Spent more than earned'
+                : `${savingsRate.toFixed(0)}% of income saved`
+              : undefined
+          }
         />
       </div>
 

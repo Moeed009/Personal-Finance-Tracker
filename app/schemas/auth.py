@@ -20,8 +20,20 @@ class TokenResponse(BaseModel):
     id: UUID
     email: EmailStr
     full_name: str
+    created_at: datetime | None = None
     access_token: str
+    expires_in: int | None = None
     token_type: str = "bearer"
+
+class RefreshRequest(BaseModel):
+    refresh_token: str | None = Field(default=None, min_length=1, max_length=1024)
+
+
+class RefreshResponse(BaseModel):
+    access_token: str
+    expires_in: int | None = None
+    token_type: str = "bearer"
+
 
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr

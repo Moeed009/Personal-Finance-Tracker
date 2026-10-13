@@ -31,9 +31,14 @@ export function DeleteTransactionDialog({ transaction, currency, onClose }: Dele
             Delete <span className="font-medium text-slate-900">{transaction.description}</span> (
             {formatMoney(transaction.amount, currency)})? Your account balance will be updated.
           </p>
-          {transaction.transfer_group_id && (
+          {transaction.transfer_group_id && !transaction.import_batch_id && (
             <p className="mt-2 font-medium text-rose-700">
               This is part of a transfer. Both sides of the transfer will be deleted.
+            </p>
+          )}
+          {transaction.transfer_group_id && transaction.import_batch_id && (
+            <p className="mt-2 text-slate-500">
+              The matching row in your other account stays, as ordinary income or expense.
             </p>
           )}
         </>

@@ -1,21 +1,19 @@
 import uuid
-from decimal import Decimal
 
-from sqlalchemy import Select, case, delete, func, or_, select
+from sqlalchemy import Select, and_, delete, func, or_, select, update
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import BadRequestError, NotFoundError
-from app.core.money import money
+from app.models.category import Category
 from app.models.transaction import TransactionType
 from app.models.transaction import Transaction
 from app.schemas.transaction import (
     TransactionCreate,
     TransactionFilters,
-    TransactionSummary,
     TransactionUpdate,
     TransferCreate,
 )
-from app.services import account_service, category_service
+from app.services import account_service, category_service, change_hooks
 from app.services.categorization import CategoryResolver, derive_merchant
 
 MANUAL_TYPES = (TransactionType.INCOME, TransactionType.EXPENSE)
@@ -78,6 +76,7 @@ def create_transaction(db: Session, user_id: uuid.UUID, data: TransactionCreate)
     )
     db.add(txn)
     db.commit()
+    change_hooks.transactions_changed(db, user_id, {txn.transaction_date}, [txn])
     return txn
 
 
@@ -92,34 +91,11 @@ def list_transactions(db: Session, user_id: uuid.UUID, filters: TransactionFilte
     return list(items), total
 
 
-def get_summary(db: Session, user_id: uuid.UUID, filters: TransactionFilters) -> TransactionSummary:
-    expense = case((Transaction.type == TransactionType.EXPENSE, Transaction.amount), else_=0)
-    income = case((Transaction.type == TransactionType.INCOME, Transaction.amount), else_=0)
-    query = _apply_filters(
-        select(func.coalesce(func.sum(expense), 0), func.coalesce(func.sum(income), 0)).where(
-            Transaction.user_id == user_id
-        ),
-        filters,
-    )
-    total_debit, total_credit = db.execute(query).one()
-    if filters.account_id:
-        accounts = [account_service.get_account_with_balance(db, user_id, filters.account_id)]
-        balance = accounts[0].balance
-    else:
-        accounts, balance = account_service.summary(db, user_id)
-    opening_balance = money(sum((account.opening_balance for account in accounts), Decimal("0")))
-    return TransactionSummary(
-        opening_balance=opening_balance,
-        total_debit=money(total_debit),
-        total_credit=money(total_credit),
-        balance=balance,
-    )
-
-
 def update_transaction(db: Session, user_id: uuid.UUID, transaction_id: uuid.UUID, data: TransactionUpdate) -> Transaction:
     txn = _get(db, user_id, transaction_id)
     if txn.transfer_group_id:
         raise BadRequestError("Transfer transactions cannot be edited. Delete the transfer and create a new one")
+    old_date = txn.transaction_date
     changes = data.model_dump(exclude_unset=True)
     if "type" in changes and changes["type"] is not None:
         _require_manual_type(changes["type"])
@@ -141,26 +117,42 @@ def update_transaction(db: Session, user_id: uuid.UUID, transaction_id: uuid.UUI
             )
             txn.category_id = changes["category_id"]
     elif txn.category_id:
-        current = category_service.get_category(db, user_id, txn.category_id)
-        try:
-            category_service.ensure_compatible(current, txn.type)
-        except BadRequestError:
-            txn.category_id = CategoryResolver(db, user_id).resolve(txn.description, txn.type)
+        # The transaction keeps its category even if that category has since
+        # been deactivated; only re-check it against a changed type.
+        current = db.get(Category, txn.category_id)
+        if current is not None:
+            try:
+                category_service.ensure_compatible(current, txn.type)
+            except BadRequestError:
+                txn.category_id = CategoryResolver(db, user_id).resolve(txn.description, txn.type)
     db.commit()
+    change_hooks.transactions_changed(db, user_id, {old_date, txn.transaction_date}, [txn])
     return txn
 
 
 def delete_transaction(db: Session, user_id: uuid.UUID, transaction_id: uuid.UUID) -> None:
     txn = _get(db, user_id, transaction_id)
-    if txn.transfer_group_id:
-        db.execute(
-            delete(Transaction).where(
-                Transaction.transfer_group_id == txn.transfer_group_id, Transaction.user_id == user_id
-            )
-        )
+    day = txn.transaction_date
+    same_group = and_(Transaction.transfer_group_id == txn.transfer_group_id, Transaction.user_id == user_id)
+    app_made = txn.transfer_group_id is not None and db.scalar(
+        select(func.count()).select_from(Transaction).where(same_group, Transaction.import_batch_id.is_(None))
+    )
+    if app_made:
+        # A transfer made in the app: both sides go together.
+        db.execute(delete(Transaction).where(same_group))
     else:
+        # An ordinary row, or one side of a transfer matched from imported
+        # statements: the other account's row stays, as ordinary income or expense.
+        if txn.transfer_group_id is not None:
+            db.execute(
+                update(Transaction)
+                .where(same_group, Transaction.id != txn.id)
+                .values(transfer_group_id=None)
+                .execution_options(synchronize_session=False)
+            )
         db.delete(txn)
     db.commit()
+    change_hooks.transactions_changed(db, user_id, {day})
 
 
 def create_transfer(db: Session, user_id: uuid.UUID, data: TransferCreate) -> tuple[uuid.UUID, Transaction, Transaction]:

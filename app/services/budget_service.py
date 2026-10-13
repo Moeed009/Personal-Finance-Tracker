@@ -25,6 +25,10 @@ WARNING_AT = Decimal("80")
 EXCEEDED_AT = Decimal("100")
 
 
+def _exact_percent(spent: Decimal, limit: Decimal) -> Decimal:
+    return spent / limit * 100 if limit else ZERO
+
+
 def status_for(percent_used: Decimal) -> BudgetStatus:
     if percent_used >= EXCEEDED_AT:
         return BudgetStatus.EXCEEDED
@@ -60,7 +64,7 @@ def _build(budget: Budget, category_name: str, spent: Decimal) -> BudgetRead:
         spent=spent,
         remaining=money(budget.limit_amount - spent),
         percent_used=used,
-        status=status_for(used),
+        status=status_for(_exact_percent(spent, budget.limit_amount)),
     )
 
 
@@ -131,8 +135,9 @@ def refresh_statuses(db: Session, user_id: uuid.UUID, months: set[date]) -> None
             continue
         spent = _spent_by_category(db, user_id, month)
         for budget, name in budgets:
-            used = percent(spent.get(budget.category_id, ZERO), budget.limit_amount)
-            new_status = status_for(used)
+            category_spent = spent.get(budget.category_id, ZERO)
+            used = percent(category_spent, budget.limit_amount)
+            new_status = status_for(_exact_percent(category_spent, budget.limit_amount))
             if new_status == budget.last_status:
                 continue
             budget.last_status = new_status

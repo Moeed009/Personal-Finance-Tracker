@@ -16,6 +16,3 @@ def month_bounds(value: date) -> tuple[date, date]:
     return start, start.replace(day=calendar.monthrange(start.year, start.month)[1])
 
 
-def parse_month(text: str) -> date:
-    year, month = text.split("-")
-    return date(int(year), int(month), 1)

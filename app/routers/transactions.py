@@ -8,6 +8,7 @@ from app.core.database import get_db
 from app.core.security import CurrentUser
 from app.schemas.common import Page
 from app.schemas.transaction import (
+    OwnTransfersResult,
     TransactionCreate,
     TransactionFilters,
     TransactionRead,
@@ -15,7 +16,7 @@ from app.schemas.transaction import (
     TransferCreate,
     TransferRead,
 )
-from app.services import transaction_service
+from app.services import change_hooks, own_transfers, transaction_service
 
 router = APIRouter(tags=["Transactions"])
 DbSession = Annotated[Session, Depends(get_db)]
@@ -43,6 +44,22 @@ def update_transaction(transaction_id: uuid.UUID, data: TransactionUpdate, user:
 @router.delete("/transactions/{transaction_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_transaction(transaction_id: uuid.UUID, user: CurrentUser, db: DbSession):
     transaction_service.delete_transaction(db, user.id, transaction_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/transactions/own-transfers/detect", response_model=OwnTransfersResult)
+def detect_own_transfers(user: CurrentUser, db: DbSession):
+    """Mark imported rows that move money between the user's own accounts as transfers."""
+    marked = own_transfers.mark_own_transfers(db, user.id)
+    change_hooks.transactions_changed(db, user.id, {txn.transaction_date for txn in marked})
+    return OwnTransfersResult(marked=len(marked))
+
+
+@router.post("/transactions/{transaction_id}/not-transfer", status_code=status.HTTP_204_NO_CONTENT)
+def unmark_transfer(transaction_id: uuid.UUID, user: CurrentUser, db: DbSession):
+    """Undo an automatic own-transfer match so the rows count as income or expense again."""
+    legs = own_transfers.unmark_transfer(db, user.id, transaction_id)
+    change_hooks.transactions_changed(db, user.id, {leg.transaction_date for leg in legs}, legs)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
