@@ -1,9 +1,236 @@
 @import "tailwindcss";
 
+/*
+ * Dark premium theme (emerald + gold).
+ *
+ * The pages use Tailwind's standard colour names (slate, indigo, rose, ...).
+ * Instead of rewriting every page, those colour scales are remapped here:
+ * - slate is inverted: low numbers are dark surfaces, high numbers light text,
+ * - white is the card surface, so text-white on a bright button reads dark,
+ * - indigo becomes the emerald brand colour,
+ * - amber becomes gold, and rose/emerald/sky/violet get dark tints with light text.
+ */
+@theme {
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Sora", "Manrope", ui-sans-serif, system-ui, sans-serif;
+
+  --color-white: #0e1714;
+  --color-black: #000000;
+  /* Real white, for translucent glass layers (bg-glass/5, border-glass/10). */
+  --color-glass: #ffffff;
+
+  --color-slate-50: #111b17;
+  --color-slate-100: #16211d;
+  --color-slate-200: #22302a;
+  --color-slate-300: #34443d;
+  --color-slate-400: #6e8279;
+  --color-slate-500: #8fa39a;
+  --color-slate-600: #b3c3bc;
+  --color-slate-700: #cfdcd6;
+  --color-slate-800: #e2ebe7;
+  --color-slate-900: #ecf3ef;
+  --color-slate-950: #f6faf8;
+
+  --color-indigo-50: #0d2a21;
+  --color-indigo-100: #0f3a2c;
+  --color-indigo-200: #0c4434;
+  --color-indigo-300: #1f7a5c;
+  --color-indigo-400: #34d399;
+  --color-indigo-500: #10b981;
+  --color-indigo-600: #10b981;
+  --color-indigo-700: #34d399;
+  --color-indigo-800: #6ee7b7;
+  --color-indigo-900: #a7f3d0;
+
+  --color-emerald-50: #0d2a21;
+  --color-emerald-100: #0f3a2c;
+  --color-emerald-200: #14533f;
+  --color-emerald-500: #10b981;
+  --color-emerald-600: #34d399;
+  --color-emerald-700: #6ee7b7;
+  --color-emerald-800: #a7f3d0;
+
+  --color-amber-50: #2a2109;
+  --color-amber-100: #3a2d0c;
+  --color-amber-200: #5a4613;
+  --color-amber-500: #e9b949;
+  --color-amber-600: #f0c860;
+  --color-amber-700: #f5d68a;
+  --color-amber-800: #fbe7b4;
+
+  --color-rose-50: #2a1218;
+  --color-rose-100: #3a1720;
+  --color-rose-200: #5c2130;
+  --color-rose-400: #fb7185;
+  --color-rose-500: #f43f5e;
+  --color-rose-600: #fb7185;
+  --color-rose-700: #fda4af;
+
+  --color-sky-50: #0f2230;
+  --color-sky-600: #7dd3fc;
+  --color-violet-50: #1c1630;
+  --color-violet-600: #c4b5fd;
+}
+
+:root {
+  color-scheme: dark;
+  --surface: #0e1714;
+  --surface-raised: rgba(16, 26, 22, 0.72);
+  --hairline: rgba(255, 255, 255, 0.07);
+  --brand: #10b981;
+  --brand-bright: #34d399;
+  --gold: #e9b949;
+  --gold-soft: #f5d68a;
+}
+
 body {
-  background-color: white;
-
-
-  color: #0f172a;
+  margin: 0;
+  min-height: 100vh;
+  color: #ecf3ef;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  background:
+    radial-gradient(1100px 600px at 15% -10%, rgba(16, 185, 129, 0.16), transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, rgba(233, 185, 73, 0.08), transparent 55%),
+    #060b09;
+  background-attachment: fixed;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.015em;
+}
+
+::selection {
+  background: rgba(16, 185, 129, 0.35);
+}
+
+/* The dark overlays behind menus and dialogs must stay dark after the slate inversion. */
+.bg-slate-900\/40 {
+  background-color: rgba(0, 0, 0, 0.6) !important;
+  backdrop-filter: blur(2px);
+}
+
+/* Cards and panels: glass surface with a hairline border. */
+.bg-white {
+  background-color: var(--surface-raised) !important;
+  backdrop-filter: blur(12px);
+}
+
+.ring-slate-200 {
+  --tw-ring-color: var(--hairline) !important;
+}
+
+.shadow-sm {
+  --tw-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 20px 40px -24px rgba(0, 0, 0, 0.7) !important;
+}
+
+/* Primary buttons: emerald gradient with a soft glow. */
+.bg-indigo-600 {
+  background-image: linear-gradient(135deg, #34d399, #10b981 55%, #0e9f6e);
+}
+
+.bg-indigo-600:hover,
+.hover\:bg-indigo-700:hover {
+  box-shadow: 0 12px 30px -12px rgba(16, 185, 129, 0.8);
+}
+
+/* Inputs */
+input,
+select,
+textarea {
+  color-scheme: dark;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #6e8279;
+}
+
+/* Reusable premium pieces */
+.card-lift {
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease,
+    border-color 0.25s ease;
+}
+
+.card-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 18px 40px -18px rgba(16, 185, 129, 0.45);
+}
+
+.hero-card {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #0f5d45 0%, #0b3b2d 45%, #0a231c 100%);
+  border: 1px solid rgba(110, 231, 183, 0.22);
+  box-shadow: 0 30px 60px -30px rgba(16, 185, 129, 0.55);
+  color: #ecf3ef;
+}
+
+.hero-card::after {
+  content: "";
+  position: absolute;
+  right: -80px;
+  top: -120px;
+  width: 340px;
+  height: 340px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(233, 185, 73, 0.32), transparent 65%);
+  pointer-events: none;
+}
+
+.text-gradient-gold {
+  background: linear-gradient(135deg, #fbe7b4, #e9b949);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-rise {
+  animation: rise 0.55s ease both;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-float {
+  animation: float 7s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise,
+  .animate-float,
+  .card-lift,
+  .card-lift:hover {
+    animation: none;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* Scrollbars */
+* {
+  scrollbar-color: #2a3a33 transparent;
 }

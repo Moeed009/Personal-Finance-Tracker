@@ -156,7 +156,7 @@ export default function CategoriesPage() {
                 No custom categories here yet.
               </div>
             ) : (
-              <ul className="divide-y divide-slate-100 rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
+              <ul className="divide-y divide-slate-100 rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
                 {custom.map((category) => (
                   <CategoryRow
                     key={category.id}
@@ -175,7 +175,7 @@ export default function CategoriesPage() {
                 No default categories to show.
               </div>
             ) : (
-              <ul className="divide-y divide-slate-100 rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
+              <ul className="divide-y divide-slate-100 rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
                 {defaults.map((category) => (
                   <CategoryRow key={category.id} category={category} />
                 ))}

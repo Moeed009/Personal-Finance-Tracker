@@ -113,7 +113,7 @@ export default function AlertsPage() {
       )}
 
       {data && visible.length > 0 && (
-        <ul className="divide-y divide-slate-100 rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
+        <ul className="divide-y divide-slate-100 rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
           {visible.map((alert) => {
             const style = alertStyles[alert.alert_type]
             const Icon = style.icon

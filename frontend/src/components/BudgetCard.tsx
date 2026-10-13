@@ -21,7 +21,7 @@ export function BudgetCard({ budget, currency, onEdit, onDelete }: BudgetCardPro
   const remaining = Number(budget.remaining)
 
   return (
-    <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+    <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate font-medium text-slate-900">{budget.category_name}</p>

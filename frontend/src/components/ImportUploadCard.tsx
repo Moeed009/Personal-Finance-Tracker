@@ -59,7 +59,7 @@ export function ImportUploadCard({ onImported }: ImportUploadCardProps) {
 
   if (!accounts.isPending && accountList.length === 0) {
     return (
-      <div className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+      <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
         <p className="text-sm text-slate-600">You need an account before importing transactions.</p>
         <Link
           to="/accounts"
@@ -72,7 +72,7 @@ export function ImportUploadCard({ onImported }: ImportUploadCardProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+    <form onSubmit={handleSubmit} className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
       <h2 className="text-base font-semibold text-slate-900">Upload a statement</h2>
       <p className="mt-1 text-sm text-slate-500">Transactions are added to the account you choose.</p>
 

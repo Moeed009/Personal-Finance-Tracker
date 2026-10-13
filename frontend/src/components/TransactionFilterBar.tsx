@@ -33,7 +33,7 @@ export function TransactionFilterBar({ filters, accounts, categories, onChange, 
   }
 
   return (
-    <div className="mb-4 rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+    <div className="mb-4 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="sm:col-span-2">
           <TextField

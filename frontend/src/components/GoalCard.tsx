@@ -26,7 +26,7 @@ export function GoalCard({ goal, currency, onContribute, onEdit, onDelete }: Goa
   const remaining = timeLeft(goal.target_date)
 
   return (
-    <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+    <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate font-medium text-slate-900">{goal.name}</p>

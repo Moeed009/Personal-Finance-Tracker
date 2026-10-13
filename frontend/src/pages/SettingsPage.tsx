@@ -64,7 +64,7 @@ function ProfileCard({ user }: { user: User }) {
   return (
     <form
       onSubmit={handleSubmit((values) => mutation.mutate(values))}
-      className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200"
+      className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200"
       noValidate
     >
       <h2 className="text-base font-semibold text-slate-900">Profile</h2>
@@ -152,7 +152,7 @@ function PasswordCard() {
   return (
     <form
       onSubmit={handleSubmit((values) => mutation.mutate(values))}
-      className="mt-6 rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200"
+      className="mt-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200"
       noValidate
     >
       <h2 className="text-base font-semibold text-slate-900">Security</h2>
@@ -224,7 +224,7 @@ export default function SettingsPage() {
 
       <PasswordCard />
 
-      <section className="mt-6 rounded-xl bg-white p-6 shadow-sm ring-1 ring-rose-200">
+      <section className="mt-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-rose-200">
         <h2 className="text-base font-semibold text-rose-700">Danger zone</h2>
 
         <p className="mt-1 text-sm text-slate-600">

@@ -115,7 +115,7 @@ export default function TransactionsPage() {
       )}
 
       {!isLoading && !error && transactions.data && (
-        <div className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
+        <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
           {transactions.data.items.length === 0 ? (
             <div className="p-10 text-center">
               <Receipt className="mx-auto text-slate-400" size={32} />
