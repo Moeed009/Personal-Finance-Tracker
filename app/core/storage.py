@@ -11,11 +11,11 @@ def _bucket():
     return get_admin_client().storage.from_(get_settings().import_bucket_name)
 
 
-def upload_csv(path: str, content: bytes) -> None:
+def upload_csv(path: str, content: bytes, content_type: str = "text/csv") -> None:
     try:
-        _bucket().upload(path, content, {"content-type": "text/csv", "upsert": "false"})
+        _bucket().upload(path, content, {"content-type": content_type, "upsert": "false"})
     except Exception as exc:
-        logger.exception("CSV upload failed")
+        logger.exception("Import file upload failed")
         raise ExternalServiceError("Could not store the uploaded file") from exc
 
 

@@ -2,10 +2,11 @@ import { api } from '@/api/client'
 import type { DownloadLink, ImportBatch, ImportedTransaction, ImportSummary, Page } from '@/types/api'
 
 export const importsApi = {
-  upload: (file: File, accountId: string) => {
+  upload: (file: File, accountId: string, password?: string) => {
     const body = new FormData()
     body.append('file', file)
     body.append('account_id', accountId)
+    if (password) body.append('password', password)
     return api.post<ImportSummary>('/transactions/import', body)
   },
   list: () => api.get<ImportBatch[]>('/imports'),

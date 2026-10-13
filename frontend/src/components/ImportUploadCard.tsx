@@ -8,7 +8,7 @@ import { SelectField } from '@/components/SelectField'
 import { useAccounts } from '@/hooks/useAccounts'
 import { formatBytes } from '@/lib/format'
 import { invalidateFinanceData } from '@/lib/invalidate'
-import { MAX_UPLOAD_MB, validateCsvFile } from '@/lib/imports'
+import { MAX_UPLOAD_MB, isPdfFile, validateImportFile } from '@/lib/imports'
 import type { ImportSummary } from '@/types/api'
 
 interface ImportUploadCardProps {
@@ -23,16 +23,20 @@ export function ImportUploadCard({ onImported }: ImportUploadCardProps) {
   const [accountId, setAccountId] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [fileError, setFileError] = useState<string | null>(null)
+  const [password, setPassword] = useState('')
   const [inputKey, setInputKey] = useState(0)
 
   const selectedAccountId = accountId || (accountList.length === 1 ? accountList[0].id : '')
   const canSubmit = Boolean(file && selectedAccountId && !fileError)
+  const isPdf = file ? isPdfFile(file) : false
 
   const mutation = useMutation({
-    mutationFn: ({ file, accountId }: { file: File; accountId: string }) => importsApi.upload(file, accountId),
+    mutationFn: ({ file, accountId, password }: { file: File; accountId: string; password?: string }) =>
+      importsApi.upload(file, accountId, password),
     onSuccess: async (summary) => {
       await invalidateFinanceData(queryClient)
       setFile(null)
+      setPassword('')
       setInputKey((key) => key + 1)
       onImported(summary)
     },
@@ -42,12 +46,15 @@ export function ImportUploadCard({ onImported }: ImportUploadCardProps) {
     const selected = event.target.files?.[0] ?? null
     mutation.reset()
     setFile(selected)
-    setFileError(selected ? validateCsvFile(selected) : null)
+    setPassword('')
+    setFileError(selected ? validateImportFile(selected) : null)
   }
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
-    if (file && selectedAccountId && !fileError) mutation.mutate({ file, accountId: selectedAccountId })
+    if (file && selectedAccountId && !fileError) {
+      mutation.mutate({ file, accountId: selectedAccountId, password: isPdf ? password : undefined })
+    }
   }
 
   if (!accounts.isPending && accountList.length === 0) {
@@ -66,7 +73,7 @@ export function ImportUploadCard({ onImported }: ImportUploadCardProps) {
 
   return (
     <form onSubmit={handleSubmit} className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-      <h2 className="text-base font-semibold text-slate-900">Upload a CSV</h2>
+      <h2 className="text-base font-semibold text-slate-900">Upload a statement</h2>
       <p className="mt-1 text-sm text-slate-500">Transactions are added to the account you choose.</p>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -81,19 +88,35 @@ export function ImportUploadCard({ onImported }: ImportUploadCardProps) {
 
         <div>
           <label htmlFor="csv-file" className="mb-1 block text-sm font-medium text-slate-700">
-            CSV file
+            CSV or PDF file
           </label>
           <input
             key={inputKey}
             id="csv-file"
             type="file"
-            accept=".csv,text/csv"
+            accept=".csv,.pdf,text/csv,application/pdf"
             onChange={handleFileChange}
             className="block w-full text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-indigo-700 hover:file:bg-indigo-100"
           />
           {file && !fileError && <p className="mt-1 text-xs text-slate-500">{formatBytes(file.size)}</p>}
           {fileError && <p className="mt-1 text-xs text-rose-600">{fileError}</p>}
         </div>
+
+        {isPdf && !fileError && (
+          <div className="sm:col-span-2">
+            <label htmlFor="pdf-password" className="mb-1 block text-sm font-medium text-slate-700">
+              PDF password <span className="font-normal text-slate-400">(only if the statement is locked)</span>
+            </label>
+            <input
+              id="pdf-password"
+              type="password"
+              autoComplete="off"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              className="block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:max-w-xs"
+            />
+          </div>
+        )}
       </div>
 
       {mutation.error && (
@@ -108,7 +131,7 @@ export function ImportUploadCard({ onImported }: ImportUploadCardProps) {
       </div>
 
       <details className="mt-5 rounded-lg bg-slate-50 p-4 text-sm text-slate-600">
-        <summary className="cursor-pointer font-medium text-slate-700">Supported CSV format</summary>
+        <summary className="cursor-pointer font-medium text-slate-700">Supported file formats</summary>
         <ul className="mt-3 list-disc space-y-1 pl-5">
           <li>
             The first row must be a header. Required columns: <strong>Date</strong>, <strong>Description</strong> and
@@ -116,6 +139,10 @@ export function ImportUploadCard({ onImported }: ImportUploadCardProps) {
           </li>
           <li>With an Amount column, negative values are expenses and positive values are income.</li>
           <li>Optional columns: Type (Income/Expense) and Balance.</li>
+          <li>
+            <strong>PDF statements</strong> work when the PDF contains a transaction table with the same columns.
+            Scanned (photographed) statements are not supported. Locked PDFs need their password.
+          </li>
           <li>Rows already imported (same date, amount and description) are skipped.</li>
           <li>Maximum file size is {MAX_UPLOAD_MB} MB.</li>
         </ul>

@@ -20,8 +20,8 @@ dependencies = [
     "supabase>=2.31.0",
     "uvicorn[standard]>=0.53.0",
     "apscheduler",
-    "pytest"
-    
+    "pytest",
+    "pdfplumber>=0.11.10",
 ]
 
 [dependency-groups]

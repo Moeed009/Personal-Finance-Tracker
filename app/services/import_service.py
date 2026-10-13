@@ -24,6 +24,7 @@ from app.models.transaction import Transaction, TransactionType
 from app.schemas.imports import ImportSummary, RowError
 from app.services import account_service
 from app.services.categorization import CategoryResolver, derive_merchant, normalize
+from app.services.pdf_parser import pdf_to_csv_text
 from app.services.csv_parser import (
     ColumnMapping,
     ParsedRow,
@@ -110,8 +111,8 @@ def _statement_opening_balance(
 def read_upload(file: UploadFile) -> bytes:
     filename = (file.filename or "").lower()
 
-    if not filename.endswith(".csv"):
-        raise BadRequestError("Only .csv files are accepted")
+    if not filename.endswith((".csv", ".pdf")):
+        raise BadRequestError("Only .csv and .pdf files are accepted")
 
     limit = get_settings().max_upload_size_mb * 1024 * 1024
 
@@ -123,7 +124,10 @@ def read_upload(file: UploadFile) -> bytes:
         )
 
     if not content.strip():
-        raise BadRequestError("CSV file is empty")
+        raise BadRequestError("The uploaded file is empty")
+
+    if filename.endswith(".pdf") and not content.lstrip().startswith(b"%PDF"):
+        raise BadRequestError("The file is not a valid PDF")
 
     return content
 
@@ -134,27 +138,45 @@ def import_csv(
     account_id: uuid.UUID,
     file: UploadFile,
     mapping: ColumnMapping,
+    password: str | None = None,
 ) -> ImportSummary:
     account = account_service.get_account(db, user_id, account_id)
 
     content = read_upload(file)
+    is_pdf = (file.filename or "").lower().endswith(".pdf")
 
-    parsed = parse_csv(
-        decode_content(content),
-        mapping,
-    )
+    if is_pdf:
+        try:
+            parsed = parse_csv(pdf_to_csv_text(content, password), mapping)
+        except BadRequestError as exc:
+            if exc.message.startswith("CSV must contain"):
+                raise BadRequestError(
+                    "The table in this PDF needs a date, a description and an amount column"
+                ) from exc
+            raise
+    else:
+        parsed = parse_csv(
+            decode_content(content),
+            mapping,
+        )
+
+    extension = "pdf" if is_pdf else "csv"
 
     batch = ImportBatch(
         id=uuid.uuid4(),
         user_id=user_id,
         account_id=account.id,
-        filename=(file.filename or "import.csv")[:255],
-        storage_path=f"{user_id}/{uuid.uuid4()}.csv",
+        filename=(file.filename or f"import.{extension}")[:255],
+        storage_path=f"{user_id}/{uuid.uuid4()}.{extension}",
         file_size=len(content),
         rows_total=parsed.total,
     )
 
-    storage.upload_csv(batch.storage_path, content)
+    storage.upload_csv(
+        batch.storage_path,
+        content,
+        "application/pdf" if is_pdf else "text/csv",
+    )
 
     try:
         hashes = {

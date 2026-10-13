@@ -10,6 +10,7 @@ from app.models.transaction import TransactionType
 from app.services.categorization import derive_merchant, match_category_name
 from app.services.csv_parser import ColumnMapping, parse_amount, parse_csv, parse_date
 from app.services.import_service import compute_dedupe_hash
+from app.services.pdf_parser import tables_to_csv
 from app.services.insight_service import _transaction_threshold
 from app.services.recurring_service import RecurringFrequency, evaluate_series
 
@@ -222,3 +223,28 @@ class TestUnusualThreshold:
     def test_threshold_is_mean_plus_two_standard_deviations(self):
         history = [Decimal("10")] * 4 + [Decimal("100")]
         assert _transaction_threshold(history) == Decimal("100.00")
+
+class TestPdfTables:
+    def test_header_found_after_preamble_and_wrapped_description_joined(self):
+        tables = [[
+            ["Customer Name", "Abdul Moeed", None],
+            ["Date", "Description", "Amount"],
+            ["2026-09-01", "Incoming transfer", "+500"],
+            [None, "from Meezan", None],
+            ["2026-09-02", "KFC\nLahore", "-850"],
+        ]]
+        result = parse_csv(tables_to_csv(tables), ColumnMapping())
+
+        assert result.errors == []
+        assert [r.description for r in result.rows] == ["Incoming transfer from Meezan", "KFC Lahore"]
+        assert [r.type for r in result.rows] == [INCOME, EXPENSE]
+
+    def test_header_repeated_on_each_page_is_dropped(self):
+        page = [["Date", "Description", "Amount"], ["2026-09-01", "A", "-10"]]
+        result = parse_csv(tables_to_csv([page, page]), ColumnMapping())
+
+        assert result.total == 2
+        assert result.errors == []
+
+    def test_no_header_gives_empty_text(self):
+        assert tables_to_csv([[["Name", "Value"], ["a", "1"]]]) == ""

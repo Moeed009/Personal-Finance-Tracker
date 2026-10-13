@@ -12,7 +12,7 @@ from app.schemas.imports import DownloadLink, ImportBatchRead, ImportedTransacti
 from app.services import import_service
 from app.services.csv_parser import ColumnMapping
 
-router = APIRouter(tags=["CSV Import"])
+router = APIRouter(tags=["Import"])
 DbSession = Annotated[Session, Depends(get_db)]
 DOWNLOAD_TTL = 300
 
@@ -23,8 +23,10 @@ def import_transactions(
     db: DbSession,
     file: Annotated[UploadFile, File()],
     account_id: Annotated[uuid.UUID, Form()],
+    password: Annotated[str | None, Form(max_length=256)] = None,
 ):
-    return import_service.import_csv(db, user.id, account_id, file, ColumnMapping())
+    """Import a CSV file or a PDF bank statement. `password` is only needed for protected PDFs."""
+    return import_service.import_csv(db, user.id, account_id, file, ColumnMapping(), password)
 
 
 @router.get("/imports", response_model=list[ImportBatchRead])
