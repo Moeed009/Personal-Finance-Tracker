@@ -4,13 +4,13 @@ from functools import lru_cache
 from typing import Annotated
 
 import jwt
-from fastapi import Depends, Request, Response
+from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt import PyJWKClient
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.core.cookies import ACCESS_COOKIE, REFRESH_COOKIE, set_auth_cookies
+from app.core.cookies import ACCESS_COOKIE, REFRESH_COOKIE
 from app.core.database import get_db
 from app.core.exceptions import AuthenticationError
 from app.core.supabase import get_anon_client
@@ -72,10 +72,7 @@ def extract_token(
     return request.cookies.get(ACCESS_COOKIE)
 
 
-def _refresh_silently(
-    request: Request,
-    response: Response,
-) -> dict:
+def _refresh_silently(request: Request) -> dict:
     refresh_token = request.cookies.get(REFRESH_COOKIE)
 
     if not refresh_token:
@@ -105,11 +102,8 @@ def _refresh_silently(
             "Session expired, please log in again"
         )
 
-    set_auth_cookies(
-        response,
-        session.access_token,
-        session.refresh_token,
-    )
+    
+    request.state.refreshed_session = (session.access_token, session.refresh_token)
 
     try:
         return decode_access_token(session.access_token)
@@ -121,7 +115,6 @@ def _refresh_silently(
 
 def get_current_user(
     request: Request,
-    response: Response,
     db: Annotated[Session, Depends(get_db)],
     credentials: Annotated[
         HTTPAuthorizationCredentials | None,
@@ -131,25 +124,27 @@ def get_current_user(
     token = extract_token(request, credentials)
 
     if not token:
-        logger.warning(
-            "No token received (no Authorization header, no access cookie)"
-        )
-        raise AuthenticationError("Authentication required")
+       
+        if credentials is None and request.cookies.get(REFRESH_COOKIE):
+            logger.info("Access cookie missing, refreshing the session")
+            claims = _refresh_silently(request)
+        else:
+            raise AuthenticationError("Authentication required")
+    else:
+        try:
+            claims = decode_access_token(token)
 
-    try:
-        claims = decode_access_token(token)
+        except jwt.ExpiredSignatureError:
+            logger.info("Access token expired, refreshing the session")
+            claims = _refresh_silently(request)
 
-    except jwt.ExpiredSignatureError:
-        logger.warning("Access token expired, attempting silent refresh")
-        claims = _refresh_silently(request, response)
+        except AuthenticationError:
+            raise
 
-    except AuthenticationError:
-        raise
-
-    except jwt.PyJWTError as exc:
-        raise AuthenticationError(
-            "Invalid authentication token"
-        ) from exc
+        except jwt.PyJWTError as exc:
+            raise AuthenticationError(
+                "Invalid authentication token"
+            ) from exc
 
     try:
         subject = claims.get("sub")

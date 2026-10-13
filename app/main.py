@@ -1,12 +1,13 @@
 from contextlib import asynccontextmanager
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, FastAPI
+from fastapi import APIRouter, Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.core.cookies import ACCESS_COOKIE, set_auth_cookies
 from app.core.database import get_db
 from app.core.exceptions import register_exception_handlers
 from app.routers import (
@@ -34,6 +35,22 @@ def create_app() -> FastAPI:
             allow_methods=["*"], allow_headers=["*"],
         )
     register_exception_handlers(app)
+
+    @app.middleware("http")
+    async def apply_refreshed_session(request: Request, call_next):
+        response = await call_next(request)
+        refreshed = getattr(request.state, "refreshed_session", None)
+
+       
+        already_set = any(
+            header.startswith(f"{ACCESS_COOKIE}=")
+            for header in response.headers.getlist("set-cookie")
+        )
+
+        if refreshed and not already_set:
+            set_auth_cookies(response, *refreshed)
+
+        return response
 
     api = APIRouter(prefix="/api")
     for module in (auth, users, categories, accounts, transactions, imports, budgets, recurring, insights, goals,
