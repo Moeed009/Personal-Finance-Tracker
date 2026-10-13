@@ -18,6 +18,15 @@ DATE_FORMATS = (
     "%d.%m.%Y",
     "%d %b %Y",
     "%d-%b-%Y",
+    "%d %B %Y",
+    "%d-%B-%Y",
+    "%b %d %Y",
+    "%B %d %Y",
+    "%d/%m/%y",
+    "%d-%m-%y",
+    "%d-%b-%y",
+    "%d %b %y",
+    "%Y%m%d",
     "%m/%d/%Y",
 )
 
@@ -74,10 +83,76 @@ TYPE_WORDS = {
     "income": TransactionType.INCOME,
     "credit": TransactionType.INCOME,
     "cr": TransactionType.INCOME,
+    "c": TransactionType.INCOME,
+    "deposit": TransactionType.INCOME,
     "expense": TransactionType.EXPENSE,
     "debit": TransactionType.EXPENSE,
     "dr": TransactionType.EXPENSE,
+    "d": TransactionType.EXPENSE,
+    "withdrawal": TransactionType.EXPENSE,
 }
+
+# Words inside a bank's own type text ("Raast In", "IBFT Out", "Funds Received")
+# that say which way the money moved.
+INCOME_WORDS = {"in", "cr", "credit", "credited", "deposit", "received", "receive", "refund", "incoming"}
+EXPENSE_WORDS = {
+    "out", "dr", "debit", "debited", "withdrawal", "withdrawn", "sent", "send",
+    "paid", "payment", "purchase", "pos", "charges", "fee", "outgoing",
+}
+
+# Banks name the same column in many ways ("Txn Date", "Transaction Details",
+# "Withdrawal Amount", "Debit (PKR)"). A header is classified by the words it
+# contains; the order matters, so "Debit Amount" is a debit column, not an
+# amount column.
+HEADER_KEYWORDS = (
+    ("balance", ("balance",)),
+    ("type", ("dr/cr", "cr/dr", "d/c", "c/d", "type", "kind")),
+    ("debit", ("debit", "debits", "withdrawal", "withdrawals", "dr", "paid out", "money out", "outflow")),
+    ("credit", ("credit", "credits", "deposit", "deposits", "cr", "paid in", "money in", "inflow")),
+    ("date", ("date", "timestamp", "datetime", "date time")),
+    (
+        "description",
+        ("description", "details", "detail", "narration", "narrative", "particulars", "memo", "remarks", "purpose"),
+    ),
+    ("amount", ("amount", "amt")),
+)
+
+
+def normalize_header(name: str) -> str:
+    value = name.lower()
+    value = re.sub(r"\((pkr|rs\.?|rupees|amount|amt)\)", " ", value)
+    value = re.sub(r"[^a-z/&]+", " ", value)
+    return " ".join(value.split())
+
+
+def classify_header(name: str) -> str | None:
+    """Return which field a header holds (date, description, amount, ...)."""
+    value = normalize_header(name)
+
+    if not value:
+        return None
+
+    for kind, aliases in ALIASES.items():
+        if value in aliases:
+            return kind
+
+    for kind, keywords in HEADER_KEYWORDS:
+        for keyword in keywords:
+            if re.search(rf"(^| ){re.escape(keyword)}( |$)", value):
+                return kind
+
+    return None
+
+
+def looks_like_header(cells: list[str]) -> bool:
+    """A header row names a date and a description column and holds no figures."""
+    named = [cell for cell in cells if cell and cell.strip()]
+
+    if not named or any(ch.isdigit() for cell in named for ch in cell):
+        return False
+
+    kinds = {classify_header(cell) for cell in named}
+    return "date" in kinds and "description" in kinds
 
 
 @dataclass
@@ -154,6 +229,21 @@ def resolve_columns(
                 ),
             )
 
+    taken = {getattr(resolved, name) for name in ALIASES if getattr(resolved, name)}
+
+    for name in ALIASES:
+        if getattr(resolved, name) or getattr(requested, name):
+            continue
+
+        match = next(
+            (h for h in headers if h and h not in taken and classify_header(h) == name),
+            None,
+        )
+
+        if match:
+            setattr(resolved, name, match)
+            taken.add(match)
+
     if not resolved.date or not resolved.description:
         raise BadRequestError(
             "CSV must contain a date column and a description column"
@@ -210,8 +300,8 @@ def parse_date(
 
     # Statements often append a time ("08 Sep 2026 03:26 PM"), so also try
     # the value with the time part removed.
-    parts = value.replace("T", " ").split()
-    candidates = [value]
+    parts = value.replace("T", " ").replace(",", " ").split()
+    candidates = [value, " ".join(parts)]
 
     for count in (3, 1):
         candidate = " ".join(parts[:count])
@@ -312,7 +402,7 @@ def _parse_row(
         ):
             txn_type = TYPE_WORDS.get(
                 row[mapping.type].strip().lower()
-            )
+            ) or _type_from_text(row[mapping.type])
 
             # Bank-specific types ("Raast In", "POS") are not income/expense
             # words; a signed amount (+270 / -270) already tells us which.
@@ -330,7 +420,7 @@ def _parse_row(
                     "type must be INCOME or EXPENSE"
                 )
         else:
-            txn_type = (
+            txn_type = _type_from_suffix(row[mapping.amount]) or (
                 TransactionType.EXPENSE
                 if amount < 0
                 else TransactionType.INCOME
@@ -521,6 +611,27 @@ def _is_zero_or_empty_amount(
         return False
 
 
+def _type_from_suffix(text: str) -> TransactionType | None:
+    """'1,500.00 Dr' is money out and '1,500.00 Cr' is money in."""
+    match = re.search(r"\b(dr|cr)\.?\s*$", text.strip(), re.IGNORECASE)
+
+    if not match:
+        return None
+
+    return TransactionType.EXPENSE if match.group(1).lower() == "dr" else TransactionType.INCOME
+
+
+def _type_from_text(text: str) -> TransactionType | None:
+    words = set(re.findall(r"[a-z]+", text.lower()))
+    income = bool(words & INCOME_WORDS)
+    expense = bool(words & EXPENSE_WORDS)
+
+    if income == expense:
+        return None
+
+    return TransactionType.INCOME if income else TransactionType.EXPENSE
+
+
 def _has_sign(text: str) -> bool:
     value = text.strip()
 
@@ -531,15 +642,22 @@ def _find_header_index(
     records: list[list[str]],
     requested: ColumnMapping,
 ) -> int | None:
-    
+    """Locate the header row.
+
+    Bank statements often start with account details (name, IBAN, statement
+    period) before the real table, so the header is the first row that names
+    a date column and a description column. If no row qualifies, fall back to
+    the first non-empty row so the usual error is reported.
+    """
     first_non_empty = None
+    wanted = {
+        name.strip().lower()
+        for name in (requested.date, requested.description)
+        if name
+    }
 
     for index, record in enumerate(records):
-        cells = {
-            cell.strip().lower()
-            for cell in record
-            if cell.strip()
-        }
+        cells = [cell.strip() for cell in record if cell.strip()]
 
         if not cells:
             continue
@@ -547,19 +665,10 @@ def _find_header_index(
         if first_non_empty is None:
             first_non_empty = index
 
-        wanted_date = (
-            {requested.date.strip().lower()}
-            if requested.date
-            else set(ALIASES["date"])
-        )
-
-        wanted_description = (
-            {requested.description.strip().lower()}
-            if requested.description
-            else set(ALIASES["description"])
-        )
-
-        if cells & wanted_date and cells & wanted_description:
+        if wanted:
+            if wanted <= {cell.lower() for cell in cells}:
+                return index
+        elif looks_like_header(cells):
             return index
 
     return first_non_empty
