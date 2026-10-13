@@ -10,7 +10,7 @@ import io
 import re
 
 from app.core.exceptions import BadRequestError
-from app.services.csv_parser import ALIASES
+from app.services.csv_parser import classify_header, looks_like_header
 
 Table = list[list[str | None]]
 
@@ -100,8 +100,7 @@ def tables_to_csv(tables: list[Table]) -> str:
     names = [cell.lower() for cell in header]
     date_col = _column(names, "date")
     description_col = _column(names, "description")
-    known = {alias for aliases in ALIASES.values() for alias in aliases}
-    folded = {i for i, name in enumerate(names) if name not in known}
+    folded = {i for i, name in enumerate(header) if classify_header(name) is None}
     keep = [i for i in range(len(header)) if i not in folded]
     description_parts = sorted(folded | {description_col})
 
@@ -245,12 +244,11 @@ def _clean(cell: str | None) -> str:
 
 
 def _is_header(row: list[str]) -> bool:
-    cells = {cell.lower() for cell in row if cell}
-    return bool(cells & set(ALIASES["date"])) and bool(cells & set(ALIASES["description"]))
+    return looks_like_header(row)
 
 
 def _column(names: list[str], kind: str) -> int:
-    return next(i for i, name in enumerate(names) if name in ALIASES[kind])
+    return next(i for i, name in enumerate(names) if classify_header(name) == kind)
 
 
 def _open_error(exc: Exception, password: str | None) -> BadRequestError:

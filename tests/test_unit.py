@@ -8,7 +8,7 @@ from app.core.exceptions import BadRequestError
 from app.core.money import ZERO, money, percent
 from app.models.transaction import TransactionType
 from app.services.categorization import derive_merchant, match_category_name
-from app.services.csv_parser import ColumnMapping, parse_amount, parse_csv, parse_date
+from app.services.csv_parser import ColumnMapping, classify_header, parse_amount, parse_csv, parse_date
 from app.services.import_service import compute_dedupe_hash
 from app.services.pdf_parser import tables_to_csv
 from app.services.insight_service import _transaction_threshold
@@ -270,3 +270,55 @@ class TestPdfTables:
         assert result.rows[0].description == "4187154691 RAAST P2P FT, Digital PK51ASCM000063, USAMA RAFIQUE"
         assert result.rows[0].type == EXPENSE
         assert result.rows[0].amount == Decimal("1130.00")
+
+
+class TestBankFormats:
+    @pytest.mark.parametrize(
+        "header, kind",
+        [
+            ("Txn Date", "date"),
+            ("Date & Time", "date"),
+            ("Transaction Details", "description"),
+            ("Particulars", "description"),
+            ("Debit (PKR)", "debit"),
+            ("Withdrawal Amount", "debit"),
+            ("Deposit Amount", "credit"),
+            ("Amount (Rs.)", "amount"),
+            ("Running Balance", "balance"),
+            ("Dr/Cr", "type"),
+            ("Cheque No.", None),
+        ],
+    )
+    def test_header_names_are_recognised(self, header, kind):
+        assert classify_header(header) == kind
+
+    def test_debit_credit_columns_with_bank_names(self):
+        text = (
+            "Transaction Date,Value Date,Narration,Cheque No,Debit (PKR),Credit (PKR),Balance (PKR)\n"
+            "05/09/2026,05/09/2026,FOODPANDA,,1500.00,,8500.00\n"
+            "06/09/2026,06/09/2026,SALARY,,,50000.00,58500.00\n"
+        )
+        result = parse_csv(text, ColumnMapping())
+
+        assert result.errors == []
+        assert [r.type for r in result.rows] == [EXPENSE, INCOME]
+        assert result.rows[1].balance == Decimal("58500.00")
+
+    def test_dr_cr_suffix_on_amount(self):
+        text = 'Date,Particulars,Amount\n05-Sep-2026,KFC,"1,560.00 Dr"\n06-Sep-2026,Transfer,2000.00 CR\n'
+        result = parse_csv(text, ColumnMapping())
+
+        assert [r.type for r in result.rows] == [EXPENSE, INCOME]
+        assert [r.amount for r in result.rows] == [Decimal("1560.00"), Decimal("2000.00")]
+
+    def test_bank_type_words_and_dates_with_commas(self):
+        text = (
+            "Date & Time,Transaction Type,Description,Amount (Rs.)\n"
+            '"Sep 05, 2026 10:30 AM",Money Received,From Ali,500\n'
+            '"Sep 06, 2026 11:00 AM",Bill Payment,K-Electric,1200\n'
+        )
+        result = parse_csv(text, ColumnMapping())
+
+        assert result.errors == []
+        assert [r.type for r in result.rows] == [INCOME, EXPENSE]
+        assert result.rows[0].transaction_date == date(2026, 9, 5)
