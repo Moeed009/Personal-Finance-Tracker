@@ -28,7 +28,7 @@ function AccountCard({ account, currency, onEdit, onDelete }: AccountCardProps) 
   const isNegative = Number(account.balance) < 0
 
   return (
-    <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+    <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
           <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
@@ -122,10 +122,10 @@ export default function AccountsPage() {
 
       {data && data.accounts.length > 0 && (
         <>
-          <div className="mb-6 rounded-xl bg-indigo-600 p-6 text-white shadow-sm">
-            <p className="text-sm text-indigo-100">Total balance</p>
-            <p className="mt-1 text-3xl font-semibold">{formatMoney(data.total_balance, currency)}</p>
-            <p className="mt-1 text-xs text-indigo-200">Across {data.accounts.length} account(s)</p>
+          <div className="hero-card animate-rise mb-6 rounded-3xl p-7">
+            <p className="relative z-10 text-xs font-bold uppercase tracking-widest text-emerald-800">Total balance</p>
+            <p className="relative z-10 mt-2 font-display text-4xl font-bold tracking-tight">{formatMoney(data.total_balance, currency)}</p>
+            <p className="relative z-10 mt-2 text-sm text-slate-600">Across {data.accounts.length} account(s)</p>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

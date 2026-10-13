@@ -19,7 +19,7 @@ export function ImportSummaryCard({ summary, onDismiss }: ImportSummaryCardProps
   const allDuplicates = summary.rows_imported === 0 && summary.rows_skipped > 0 && summary.rows_failed === 0
 
   return (
-    <div className="mt-6 rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+    <div className="mt-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold text-slate-900">Import finished</h2>

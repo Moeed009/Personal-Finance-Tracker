@@ -6,7 +6,7 @@ import { formatMoney } from '@/lib/format'
 import { monthLabel } from '@/lib/months'
 import type { CategorySpend } from '@/types/api'
 
-const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#f43f5e', '#06b6d4', '#8b5cf6']
+const COLORS = ['#10b981', '#e9b949', '#6ee7b7', '#f5d68a', '#2f8f6e', '#7dd3fc']
 const MAX_SLICES = 6
 
 interface Slice {
@@ -58,12 +58,30 @@ export function SpendingByCategoryCard({ month, currency }: SpendingByCategoryCa
           <div className="h-44 w-44 shrink-0">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={slices} dataKey="value" nameKey="name" innerRadius={48} outerRadius={80} paddingAngle={2}>
+                <Pie
+                  data={slices}
+                  dataKey="value"
+                  nameKey="name"
+                  innerRadius={52}
+                  outerRadius={82}
+                  paddingAngle={3}
+                  stroke="none"
+                  cornerRadius={4}
+                >
                   {slices.map((slice, index) => (
                     <Cell key={slice.name} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value) => formatMoney(Number(value), currency)} />
+                <Tooltip
+                  contentStyle={{
+                    background: 'rgba(10, 18, 15, 0.95)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    borderRadius: 14,
+                    color: '#ecf3ef',
+                  }}
+                  itemStyle={{ color: '#ecf3ef' }}
+                  formatter={(value) => formatMoney(Number(value), currency)}
+                />
               </PieChart>
             </ResponsiveContainer>
           </div>

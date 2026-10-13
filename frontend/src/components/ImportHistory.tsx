@@ -52,7 +52,7 @@ export function ImportHistory({ batches, accounts, onView }: ImportHistoryProps)
   }
 
   return (
-    <div className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
+    <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
       <div className="overflow-x-auto">
         <table className="w-full min-w-[720px] text-left text-sm">
           <thead className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500">

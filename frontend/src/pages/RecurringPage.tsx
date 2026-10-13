@@ -92,10 +92,10 @@ export default function RecurringPage() {
 
       {recurring.data && (
         <>
-          <div className="mb-6 rounded-xl bg-indigo-600 p-6 text-white shadow-sm">
-            <p className="text-sm text-indigo-100">Estimated monthly cost</p>
-            <p className="mt-1 text-3xl font-semibold">{formatMoney(recurring.data.total_monthly_cost, currency)}</p>
-            <p className="mt-1 text-xs text-indigo-200">
+          <div className="hero-card animate-rise mb-6 rounded-3xl p-7">
+            <p className="relative z-10 text-xs font-bold uppercase tracking-widest text-emerald-800">Estimated monthly cost</p>
+            <p className="relative z-10 mt-2 font-display text-4xl font-bold tracking-tight">{formatMoney(recurring.data.total_monthly_cost, currency)}</p>
+            <p className="relative z-10 mt-2 text-sm text-slate-600">
               {active.length} active payment{active.length === 1 ? '' : 's'}
               {needsReview > 0 ? ` · ${needsReview} waiting for review` : ''}
             </p>

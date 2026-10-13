@@ -39,7 +39,7 @@ export function RecurringCard({ item, accountName, categoryName, currency }: Rec
   const isDismissed = item.status === 'DISMISSED'
 
   return (
-    <div className={`rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200 ${isDismissed ? 'opacity-75' : ''}`}>
+    <div className={`rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 ${isDismissed ? 'opacity-75' : ''}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">

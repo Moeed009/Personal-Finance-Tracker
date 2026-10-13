@@ -108,7 +108,7 @@ export default function BudgetsPage() {
 
       {data && data.length > 0 && (
         <>
-          <div className="mb-6 rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+          <div className="mb-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <p className="text-sm text-slate-500">Total spent this month</p>
               <p className="text-sm text-slate-500">{overallPercent.toFixed(0)}% of total budget</p>

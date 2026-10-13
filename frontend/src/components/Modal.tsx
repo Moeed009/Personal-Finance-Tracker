@@ -30,7 +30,7 @@ export function Modal({ title, onClose, size = 'md', children }: ModalProps) {
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={`relative max-h-[90vh] w-full overflow-y-auto rounded-2xl bg-white p-6 shadow-xl ${sizes[size]}`}
+        className={`animate-rise relative max-h-[90vh] w-full overflow-y-auto rounded-3xl border border-glass/10 bg-[#0e1714] p-6 shadow-[0_40px_80px_-30px_rgba(0,0,0,0.9)] ${sizes[size]}`}
       >
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-slate-900">{title}</h2>

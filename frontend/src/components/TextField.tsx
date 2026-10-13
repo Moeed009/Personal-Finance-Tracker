@@ -10,14 +10,14 @@ export function TextField({ label, error, id, className = '', ...props }: TextFi
 
   return (
     <div>
-      <label htmlFor={inputId} className="mb-1 block text-sm font-medium text-slate-700">
+      <label htmlFor={inputId} className="mb-1.5 block text-sm font-semibold text-slate-700">
         {label}
       </label>
       <input
         id={inputId}
         aria-invalid={Boolean(error)}
-        className={`w-full rounded-lg border px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-indigo-500 ${
-          error ? 'border-rose-400' : 'border-slate-300'
+        className={`w-full rounded-xl border bg-glass/[0.04] px-3.5 py-2.5 text-sm text-slate-900 outline-none transition focus:border-emerald-500/60 focus:ring-4 focus:ring-emerald-500/15 ${
+          error ? 'border-rose-400' : 'border-glass/10'
         } ${className}`}
         {...props}
       />
