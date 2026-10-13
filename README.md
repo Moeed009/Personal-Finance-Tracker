@@ -15,7 +15,7 @@ A full-stack personal finance app for tracking accounts, transactions, budgets, 
 | **Accounts** | Cash, bank and wallet accounts with live balances and a total balance |
 | **Categories** | Built-in default categories plus your own (income, expense or both) |
 | **Transactions** | Add, edit and delete; search; filter by type, account, category and date; pagination; transfers between accounts |
-| **CSV import** | Upload bank statements, duplicate detection, per-row error report, import history, original file download |
+| **Statement import** | Upload bank statements as CSV or PDF (including password-protected PDFs), duplicate detection, per-row error report, import history, original file download |
 | **Budgets** | Monthly limits per category with On track / Warning / Exceeded status |
 | **Goals** | Savings goals with progress, monthly saving suggestion and contributions |
 | **Recurring** | Automatic detection of subscriptions and regular payments, confirm or dismiss, estimated monthly cost |
@@ -143,7 +143,7 @@ Backend settings are read from `.env` in the project root.
 | `COOKIE_SECURE` | no | `false` | Set to `true` in production (HTTPS) |
 | `ACCESS_COOKIE_MAX_AGE` | no | `3600` | Access cookie lifetime in seconds |
 | `REFRESH_COOKIE_MAX_AGE` | no | 30 days | Refresh cookie lifetime in seconds |
-| `IMPORT_BUCKET_NAME` | no | `csv-imports` | Storage bucket for uploaded CSV files |
+| `IMPORT_BUCKET_NAME` | no | `csv-imports` | Storage bucket for uploaded statement files (CSV and PDF) |
 | `MAX_UPLOAD_SIZE_MB` | no | `5` | Maximum CSV upload size |
 | `DEFAULT_CURRENCY` | no | `PKR` | Currency assigned to new users |
 | `ACCOUNT_DELETION_GRACE_HOURS` | no | `2` | Time during which a deleted account can be restored by logging in |
@@ -211,7 +211,7 @@ Full request and response schemas are available in the interactive docs at `/doc
 
 ## Known limitations
 
-- Only CSV files can be imported (no PDF import).
+- PDF import needs a text-based PDF with a transaction table. Scanned (photographed) statements are not supported.
 - Alerts are read-only: there is no mark-as-read endpoint yet.
 - Reports can be downloaded as CSV (generated in the browser) or printed to PDF; there is no server-side export.
 - A bank account that has transactions cannot be deleted through the API.
