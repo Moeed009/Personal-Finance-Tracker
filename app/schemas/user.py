@@ -19,7 +19,7 @@ class UserRead(BaseModel):
 
 class UserUpdate(BaseModel):
     full_name: str | None = Field(default=None, min_length=1, max_length=150)
-    currency: str | None = None
+    currency: str | None = Field(default=None, pattern=r"^[A-Za-z]{3}$")
     current_password: str | None = None
     new_password: str | None = Field(default=None, min_length=8, max_length=72)
 

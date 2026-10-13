@@ -7,4 +7,6 @@ export const transactionsApi = {
   update: (id: string, patch: TransactionPatch) => api.patch<Transaction>(`/transactions/${id}`, patch),
   remove: (id: string) => api.delete(`/transactions/${id}`),
   transfer: (input: TransferInput) => api.post<TransferResult>('/transfers', input),
+  detectOwnTransfers: () => api.post<{ marked: number }>('/transactions/own-transfers/detect'),
+  notTransfer: (id: string) => api.post<void>(`/transactions/${id}/not-transfer`),
 }

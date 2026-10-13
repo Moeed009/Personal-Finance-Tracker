@@ -52,9 +52,14 @@ def create_goal(db: Session, user_id: uuid.UUID, data: GoalCreate) -> GoalRead:
 
 def update_goal(db: Session, user_id: uuid.UUID, goal_id: uuid.UUID, data: GoalUpdate) -> GoalRead:
     goal = _get(db, user_id, goal_id)
-    for field, value in data.model_dump(exclude_unset=True).items():
+    changes = data.model_dump(exclude_unset=True)
+    for field, value in changes.items():
         if value is not None:
             setattr(goal, field, value)
+    if changes.get("status") is None and changes.get("target_amount") is not None:
+        # Raising the target reopens a completed goal; lowering it below what
+        # is saved completes it. A status the user sets explicitly is kept.
+        goal.status = GoalStatus.COMPLETED if goal.saved_amount >= goal.target_amount else GoalStatus.ACTIVE
     db.commit()
     return to_read(goal)
 

@@ -22,7 +22,7 @@ from app.models.account import Account
 from app.models.import_batch import ImportBatch
 from app.models.transaction import Transaction, TransactionType
 from app.schemas.imports import ImportSummary, RowError
-from app.services import account_service
+from app.services import account_service, change_hooks, own_transfers
 from app.services.categorization import CategoryResolver, derive_merchant, normalize
 from app.services.pdf_parser import pdf_to_csv_text
 from app.services.csv_parser import (
@@ -197,6 +197,12 @@ def import_csv(
 
         resolver = CategoryResolver(db, user_id)
 
+        # The statement's balance column sets the opening balance only on the
+        # account's first import; later imports would otherwise keep rewriting it.
+        is_first_import = not db.scalar(
+            select(func.count()).select_from(ImportBatch).where(ImportBatch.account_id == account.id)
+        )
+
         db.add(batch)
         db.flush()
 
@@ -239,14 +245,15 @@ def import_csv(
 
         db.flush()
 
-        opening_balance = _statement_opening_balance(
-            db,
-            account,
-            parsed.rows,
-        )
+        if is_first_import:
+            opening_balance = _statement_opening_balance(
+                db,
+                account,
+                parsed.rows,
+            )
 
-        if opening_balance is not None:
-            account.opening_balance = opening_balance
+            if opening_balance is not None:
+                account.opening_balance = opening_balance
 
         db.commit()
 
@@ -262,6 +269,16 @@ def import_csv(
         db.rollback()
         storage.remove_files([batch.storage_path])
         raise
+
+    # Moves between the user's own accounts are transfers, not income or
+    # spending. The import is already saved, so a failure here only logs.
+    try:
+        own_transfers.mark_own_transfers(db, user_id)
+    except Exception:
+        db.rollback()
+        logger.exception("Could not mark own transfers after import")
+
+    change_hooks.statement_imported(db, user_id, {txn.transaction_date for txn in imported})
 
     return ImportSummary(
         batch_id=batch.id,

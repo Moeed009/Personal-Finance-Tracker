@@ -73,7 +73,16 @@ def extract_token(
 
 
 def _refresh_silently(request: Request) -> dict:
-    refresh_token = request.cookies.get(REFRESH_COOKIE)
+    return refresh_session(request)[1]
+
+
+def refresh_session(request: Request, refresh_token: str | None = None) -> tuple[str, dict]:
+    """Start a new session from a refresh token (given, or the refresh cookie).
+
+    Returns the new access token and its claims. The new cookies are set on
+    the response by the middleware in app/main.py.
+    """
+    refresh_token = refresh_token or request.cookies.get(REFRESH_COOKIE)
 
     if not refresh_token:
         raise AuthenticationError(
@@ -106,7 +115,7 @@ def _refresh_silently(request: Request) -> dict:
     request.state.refreshed_session = (session.access_token, session.refresh_token)
 
     try:
-        return decode_access_token(session.access_token)
+        return session.access_token, decode_access_token(session.access_token)
     except jwt.PyJWTError as exc:
         raise AuthenticationError(
             "Invalid refreshed authentication token"

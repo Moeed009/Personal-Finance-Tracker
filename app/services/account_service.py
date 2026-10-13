@@ -1,7 +1,7 @@
 import uuid
 from decimal import Decimal
 
-from sqlalchemy import ColumnElement, and_, case, delete, func, select
+from sqlalchemy import ColumnElement, and_, case, delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -143,6 +143,29 @@ def delete_account(db: Session, user_id: uuid.UUID, account_id: uuid.UUID, force
     if has_transactions and not force:
         raise ConflictError("Account has transactions. Use force=true to delete the account and all its transactions")
     paths = list(db.scalars(select(ImportBatch.storage_path).where(ImportBatch.account_id == account.id)))
+
+    # Transfers have a second side in another account. A transfer made in the
+    # app goes with this account; a side that came from another account's
+    # imported statement stays, as ordinary income or expense.
+    groups = select(Transaction.transfer_group_id).where(
+        Transaction.account_id == account.id, Transaction.transfer_group_id.is_not(None)
+    )
+    other_sides = and_(
+        Transaction.user_id == user_id,
+        Transaction.account_id != account.id,
+        Transaction.transfer_group_id.in_(groups),
+    )
+    db.execute(
+        update(Transaction)
+        .where(other_sides, Transaction.import_batch_id.is_not(None))
+        .values(transfer_group_id=None)
+        .execution_options(synchronize_session=False)
+    )
+    db.execute(
+        delete(Transaction)
+        .where(other_sides, Transaction.import_batch_id.is_(None))
+        .execution_options(synchronize_session=False)
+    )
     db.execute(delete(Transaction).where(Transaction.account_id == account.id))
     db.execute(delete(RecurringExpense).where(RecurringExpense.account_id == account.id))
     db.execute(delete(ImportBatch).where(ImportBatch.account_id == account.id))

@@ -122,12 +122,21 @@ def purge_expired_users(db: Session) -> int:
 
     for user_id in expired_ids:
         try:
+            # Lock the row so a second app instance skips this user, and check
+            # again: the user may have logged in (restoring the account) since.
+            user = db.scalar(
+                select(User)
+                .where(User.id == user_id, User.deleted_at.is_not(None), User.deleted_at <= cutoff)
+                .with_for_update(skip_locked=True)
+            )
+            if user is None:
+                db.rollback()
+                continue
+
             storage.remove_user_files(user_id)
             _delete_auth_user(user_id)
 
-            user = db.get(User, user_id)
-            if user is not None:
-                db.delete(user)
+            db.delete(user)
             db.commit()
 
             purged += 1

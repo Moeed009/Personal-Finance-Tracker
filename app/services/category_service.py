@@ -28,13 +28,6 @@ def get_category(db: Session, user_id: uuid.UUID, category_id: uuid.UUID) -> Cat
     return category
 
 
-def get_uncategorized(db: Session) -> Category:
-    category = db.scalar(select(Category).where(Category.is_default.is_(True), Category.name == "Uncategorized"))
-    if category is None:
-        raise BadRequestError("Default categories are not seeded")
-    return category
-
-
 def ensure_compatible(category: Category, transaction_type: TransactionType) -> None:
     if category.type == CategoryType.BOTH:
         return

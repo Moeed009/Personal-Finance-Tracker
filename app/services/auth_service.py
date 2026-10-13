@@ -142,14 +142,6 @@ def _delete_auth_user(user_id: str) -> None:
         )
 
 
-def delete_auth_user(user_id: uuid.UUID) -> None:
-    try:
-        get_admin_client().auth.admin.delete_user(str(user_id))
-    except Exception as exc:
-        raise ExternalServiceError(
-            "Could not delete the authentication account"
-        ) from exc
-
     
 
 RESET_LINK_INVALID = "This reset link is invalid or has expired. Please request a new one"

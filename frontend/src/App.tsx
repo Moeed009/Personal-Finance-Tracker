@@ -1,25 +1,28 @@
-import type { ReactNode } from 'react'
+import { lazy, Suspense, type ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from '@/lib/queryClient'
 import { AuthProvider } from '@/components/AuthProvider'
 import { AppLayout } from '@/components/AppLayout'
 import { ProtectedRoute, PublicOnlyRoute } from '@/components/ProtectedRoute'
-import LoginPage from '@/pages/LoginPage'
-import RegisterPage from '@/pages/RegisterPage'
-import ForgotPasswordPage from '@/pages/ForgotPasswordPage'
-import ResetPasswordPage from '@/pages/ResetPasswordPage'
-import DashboardPage from '@/pages/DashboardPage'
-import TransactionsPage from '@/pages/TransactionsPage'
-import ImportsPage from '@/pages/ImportsPage'
-import AccountsPage from '@/pages/AccountsPage'
-import CategoriesPage from '@/pages/CategoriesPage'
-import BudgetsPage from '@/pages/BudgetsPage'
-import GoalsPage from '@/pages/GoalsPage'
-import RecurringPage from '@/pages/RecurringPage'
-import ReportsPage from '@/pages/ReportsPage'
-import AlertsPage from '@/pages/AlertsPage'
-import SettingsPage from '@/pages/SettingsPage'
+import { PageLoader } from '@/components/PageLoader'
+
+// Each page is its own chunk, so the first visit downloads only what it shows.
+const LoginPage = lazy(() => import('@/pages/LoginPage'))
+const RegisterPage = lazy(() => import('@/pages/RegisterPage'))
+const ForgotPasswordPage = lazy(() => import('@/pages/ForgotPasswordPage'))
+const ResetPasswordPage = lazy(() => import('@/pages/ResetPasswordPage'))
+const DashboardPage = lazy(() => import('@/pages/DashboardPage'))
+const TransactionsPage = lazy(() => import('@/pages/TransactionsPage'))
+const ImportsPage = lazy(() => import('@/pages/ImportsPage'))
+const AccountsPage = lazy(() => import('@/pages/AccountsPage'))
+const CategoriesPage = lazy(() => import('@/pages/CategoriesPage'))
+const BudgetsPage = lazy(() => import('@/pages/BudgetsPage'))
+const GoalsPage = lazy(() => import('@/pages/GoalsPage'))
+const RecurringPage = lazy(() => import('@/pages/RecurringPage'))
+const ReportsPage = lazy(() => import('@/pages/ReportsPage'))
+const AlertsPage = lazy(() => import('@/pages/AlertsPage'))
+const SettingsPage = lazy(() => import('@/pages/SettingsPage'))
 
 function RecoveryLinkGate({ children }: { children: ReactNode }) {
   const { pathname, search, hash } = useLocation()
@@ -43,6 +46,7 @@ export default function App() {
       <BrowserRouter>
         <AuthProvider>
           <RecoveryLinkGate>
+            <Suspense fallback={<PageLoader fullScreen />}>
             <Routes>
               <Route path="/reset-password" element={<ResetPasswordPage />} />
 
@@ -70,6 +74,7 @@ export default function App() {
 
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
+            </Suspense>
           </RecoveryLinkGate>
         </AuthProvider>
       </BrowserRouter>

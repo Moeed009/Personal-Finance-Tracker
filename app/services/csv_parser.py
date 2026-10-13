@@ -260,18 +260,37 @@ def resolve_columns(
 
 
 def parse_amount(text: str) -> Decimal:
+    """Read amounts as banks write them.
+
+    A minus anywhere before the figure ("Rs -300", "- PKR100.00"), a trailing
+    minus ("300-") or brackets ("(75.25)") make it negative. "1,250.50" and
+    "1.234,56" are both read correctly. A comma alone separates thousands
+    ("1,250") unless only one or two digits follow it ("12 345,67").
+    """
     value = text.strip()
+    match = re.search(r"\d(?:[\d.,]|\s(?=\d{3}\b))*", value)
 
-    negative = (
-        value.startswith("(")
-        and value.endswith(")")
-    ) or value.startswith("-")
-
-    cleaned = re.sub(r"[A-Za-z]+\.?", "", value)
-    digits = re.sub(r"[^\d.]", "", cleaned)
-
-    if not digits:
+    if not match:
         raise ValueError("amount is not a number")
+
+    before = value[: match.start()]
+    after = value[match.end():].strip()
+    negative = "-" in before or ("(" in before and ")" in after) or after.startswith("-")
+
+    digits = re.sub(r"\s", "", match.group()).rstrip(".,")
+
+    if "," in digits and "." in digits:
+        if digits.rfind(",") > digits.rfind("."):
+            digits = digits.replace(".", "").replace(",", ".")
+        else:
+            digits = digits.replace(",", "")
+    elif digits.count(".") > 1:
+        digits = digits.replace(".", "")
+    elif "," in digits and len(digits.rsplit(",", 1)[1]) <= 2:
+        # A lone comma before one or two digits is a decimal comma ("12 345,67").
+        digits = digits.replace(",", "")[: -len(digits.rsplit(",", 1)[1])] + "." + digits.rsplit(",", 1)[1]
+    else:
+        digits = digits.replace(",", "")
 
     try:
         number = Decimal(digits)
