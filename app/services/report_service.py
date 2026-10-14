@@ -15,7 +15,7 @@ def monthly_report(db: Session, user_id: uuid.UUID, month: date) -> MonthlyRepor
     summary = insight_service.period_summary(db, user_id, start, end)
     recurring = recurring_service.list_recurring(db, user_id)
     return MonthlyReport(
-        month=month, income=summary.income, expense=summary.expense, savings=summary.savings,
+        month=month, income=summary.income, expense=summary.expense,
         categories=insight_service.spending_by_category(db, user_id, start, end),
         budgets=budget_service.list_budgets(db, user_id, month),
         recurring=[RecurringRead.model_validate(r) for r in recurring if r.status.value != "DISMISSED"],

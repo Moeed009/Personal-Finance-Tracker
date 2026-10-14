@@ -43,18 +43,7 @@ def period_summary(db: Session, user_id: uuid.UUID, start: date, end: date) -> P
     totals = {transaction_type: money(total) for transaction_type, total in rows}
     income = totals.get(TransactionType.INCOME, ZERO)
     expense = totals.get(TransactionType.EXPENSE, ZERO)
-    savings = money(income - expense)
-    savings_rate = ZERO
-    if income > ZERO:
-        savings_rate = money(savings / income * 100)
-    return PeriodSummary(
-        start_date=start,
-        end_date=end,
-        income=income,
-        expense=expense,
-        savings=savings,
-        savings_rate_percent=savings_rate,
-    )
+    return PeriodSummary(start_date=start, end_date=end, income=income, expense=expense)
 
 
 def spending_by_category(db: Session, user_id: uuid.UUID, start: date, end: date) -> list[CategorySpend]:
@@ -120,20 +109,12 @@ def trends(
         current = add_months(first, offset)
         income = buckets[current].get(TransactionType.INCOME, ZERO)
         expense = buckets[current].get(TransactionType.EXPENSE, ZERO)
-        savings = money(income - expense)
-
-        savings_rate = ZERO
-        if income > ZERO:
-            savings_rate = money(savings / income * 100)
-
         if offset > 0:
             points.append(
                 TrendPoint(
                     month=current,
                     income=income,
                     expense=expense,
-                    savings=savings,
-                    savings_rate_percent=savings_rate,
                 )
             )
 
@@ -270,42 +251,6 @@ def plain_language_messages(
                 recommendation=(
                     "Review recent transactions in this category."
                     if change > ZERO
-                    else None
-                ),
-            )
-        )
-
-    summary = period_summary(
-        db,
-        user_id,
-        current_start,
-        current_end,
-    )
-
-    if summary.income > ZERO:
-        rate = summary.savings_rate_percent
-        severity = "INFO"
-
-        if rate < ZERO:
-            severity = "CRITICAL"
-        elif rate < Decimal("10"):
-            severity = "WARNING"
-
-        messages.append(
-            InsightMessage(
-                kind="SAVING",
-                title=f"{current_month_label} savings",
-                message=(
-                    f"You saved {rate:.0f} percent of your income "
-                    f"in {current_month_label}"
-                ),
-                severity=severity,
-                period_start=current_start,
-                period_end=current_end,
-                amount=summary.savings,
-                recommendation=(
-                    "Review your largest expense categories."
-                    if rate < Decimal("10")
                     else None
                 ),
             )

@@ -164,8 +164,6 @@ export interface PeriodSummary {
   end_date: string
   income: string
   expense: string
-  savings: string
-  savings_rate_percent: string
 }
 
 export interface CategorySpend {
@@ -179,8 +177,6 @@ export interface TrendPoint {
   month: string
   income: string
   expense: string
-  savings: string
-  savings_rate_percent: string | null
 }
 
 export interface UnusualItem {
@@ -265,7 +261,6 @@ export interface MonthlyReport {
   month: string
   income: string
   expense: string
-  savings: string
   categories: CategorySpend[]
   budgets: Budget[]
   recurring: RecurringExpense[]

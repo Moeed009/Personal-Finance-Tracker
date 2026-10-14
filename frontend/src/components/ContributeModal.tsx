@@ -39,7 +39,7 @@ export function ContributeModal({ goal, currency, onClose }: ContributeModalProp
   })
 
   return (
-    <Modal title="Add savings" onClose={onClose}>
+    <Modal title="Add money" onClose={onClose}>
       <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="space-y-4" noValidate>
         <div className="text-sm text-slate-600">
           <p className="font-medium text-slate-900">{goal.name}</p>
@@ -62,7 +62,7 @@ export function ContributeModal({ goal, currency, onClose }: ContributeModalProp
             Cancel
           </Button>
           <Button type="submit" disabled={mutation.isPending}>
-            {mutation.isPending ? 'Saving...' : 'Add savings'}
+            {mutation.isPending ? 'Saving...' : 'Add money'}
           </Button>
         </div>
       </form>

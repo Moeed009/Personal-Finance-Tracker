@@ -83,7 +83,7 @@ export function GoalCard({ goal, currency, onContribute, onEdit, onDelete }: Goa
       {!isCompleted && (
         <Button className="mt-4" variant="secondary" onClick={onContribute}>
           <Plus size={16} />
-          Add savings
+          Add money
         </Button>
       )}
     </div>
