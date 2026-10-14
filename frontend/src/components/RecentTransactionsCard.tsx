@@ -38,16 +38,18 @@ export function RecentTransactionsCard({ currency }: { currency: string }) {
         <ul className="divide-y divide-slate-100">
           {items.map((transaction) => {
             const isIncome = transaction.type === 'INCOME'
+            const isTransfer = Boolean(transaction.transfer_group_id)
+            const tone = isTransfer ? 'text-sky-600' : isIncome ? 'text-emerald-600' : 'text-rose-600'
             return (
               <li key={transaction.id} className="flex items-center justify-between gap-3 py-3">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-slate-900">{transaction.description}</p>
                   <p className="text-xs text-slate-500">
                     {formatDay(transaction.transaction_date)}
-                    {transaction.transfer_group_id ? ' · Transfer' : ''}
+                    {isTransfer ? ' · Own transfer' : ''}
                   </p>
                 </div>
-                <p className={`shrink-0 text-sm font-medium ${isIncome ? 'text-emerald-600' : 'text-rose-600'}`}>
+                <p className={`shrink-0 text-sm font-medium ${tone}`}>
                   {isIncome ? '+' : '−'}
                   {formatMoney(transaction.amount, currency)}
                 </p>
