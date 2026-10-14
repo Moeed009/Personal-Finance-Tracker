@@ -52,13 +52,13 @@ function BrandPanel() {
           className="animate-float absolute right-0 top-0 w-48 rounded-3xl border border-glass/10 bg-[#0a1612]/80 p-5 shadow-2xl backdrop-blur"
           style={{ animationDelay: '0.8s' }}
         >
-          <p className="text-xs text-slate-500">Savings rate</p>
+          <p className="text-xs text-slate-500">Budget used</p>
           <div
             className="mt-3 flex h-20 w-20 items-center justify-center rounded-full"
-            style={{ background: 'conic-gradient(#e9b949 0 28%, rgba(255,255,255,0.08) 28% 100%)' }}
+            style={{ background: 'conic-gradient(#e9b949 0 72%, rgba(255,255,255,0.08) 72% 100%)' }}
           >
             <div className="flex h-15 w-15 items-center justify-center rounded-full bg-[#0b1411] font-display text-lg font-bold">
-              28%
+              72%
             </div>
           </div>
         </div>

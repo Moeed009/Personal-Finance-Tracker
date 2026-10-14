@@ -11,8 +11,6 @@ class PeriodSummary(BaseModel):
     end_date: date
     income: Decimal
     expense: Decimal
-    savings: Decimal
-    savings_rate_percent: Decimal
 
 
 class CategorySpend(BaseModel):
@@ -27,8 +25,6 @@ class TrendPoint(BaseModel):
     month: date
     income: Decimal
     expense: Decimal
-    savings: Decimal
-    savings_rate_percent: Decimal | None = None
 
 
 class TopItem(BaseModel):
@@ -82,7 +78,6 @@ class RecurringInsight(BaseModel):
 class InsightMessage(BaseModel):
     kind: Literal[
         "SPENDING",
-        "SAVING",
         "TREND",
         "BUDGET",
         "UNUSUAL",

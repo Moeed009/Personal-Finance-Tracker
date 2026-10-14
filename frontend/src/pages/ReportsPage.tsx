@@ -1,4 +1,4 @@
-import { Download, Printer, PiggyBank, TrendingDown, TrendingUp } from 'lucide-react'
+import { CalendarClock, Download, Printer, TrendingDown, TrendingUp } from 'lucide-react'
 import { Button } from '@/components/Button'
 import { Card } from '@/components/Card'
 import { MonthSwitcher } from '@/components/MonthSwitcher'
@@ -160,10 +160,6 @@ export default function ReportsPage() {
     if (data) downloadTextFile(`report-${month}.csv`, reportToCsv(data), 'text/csv;charset=utf-8')
   }
 
-  const income = data ? Number(data.income) : 0
-  const savings = data ? Number(data.savings) : 0
-  const savingsRate = income > 0 ? `${((savings / income) * 100).toFixed(0)}% of income saved` : undefined
-
   return (
     <>
       <PageHeader
@@ -213,11 +209,10 @@ export default function ReportsPage() {
             <StatCard label="Income" icon={TrendingUp} tone="positive" value={formatMoney(data.income, currency)} />
             <StatCard label="Expenses" icon={TrendingDown} tone="negative" value={formatMoney(data.expense, currency)} />
             <StatCard
-              label="Savings"
-              icon={PiggyBank}
-              tone={savings < 0 ? 'negative' : savings > 0 ? 'positive' : 'default'}
-              value={formatMoney(data.savings, currency)}
-              hint={savingsRate}
+              label="Recurring bills"
+              icon={CalendarClock}
+              value={formatMoney(data.recurring_monthly_cost, currency)}
+              hint="Expected every month"
             />
           </div>
 

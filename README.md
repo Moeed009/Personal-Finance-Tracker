@@ -19,7 +19,7 @@ A full-stack personal finance app for tracking accounts, transactions, budgets, 
 | **Budgets** | Monthly limits per category with On track / Warning / Exceeded status |
 | **Goals** | Savings goals with progress, monthly saving suggestion and contributions |
 | **Recurring** | Automatic detection of subscriptions and regular payments, confirm or dismiss, estimated monthly cost |
-| **Dashboard** | Income, expenses and savings, spending by category, 6-month trend, unusual spending, budget status |
+| **Dashboard** | Income, expenses, spending pace, upcoming bills, spending by category, 6-month trend, unusual spending, budget status |
 | **Reports** | Monthly report, CSV download, print to PDF |
 | **Alerts** | Budget warnings, unusual spending and upcoming recurring payments |
 | **Settings** | Update name and currency, delete account (with a grace period to restore it) |

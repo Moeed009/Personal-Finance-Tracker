@@ -17,7 +17,7 @@ export function reportToCsv(report: MonthlyReport): string {
     line([text('Monthly report'), text(report.month.slice(0, 7))]),
     line([text('Income'), report.income]),
     line([text('Expenses'), report.expense]),
-    line([text('Savings'), report.savings]),
+    line([text('Recurring bills per month'), report.recurring_monthly_cost]),
     '',
     line([text('Category'), text('Amount'), text('Percentage')]),
     ...report.categories.map((item) => line([text(item.category_name), item.total, item.percentage])),

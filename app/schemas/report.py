@@ -12,7 +12,6 @@ class MonthlyReport(BaseModel):
     month: date
     income: Decimal
     expense: Decimal
-    savings: Decimal
     categories: list[CategorySpend]
     budgets: list[BudgetRead]
     recurring: list[RecurringRead]
