@@ -36,7 +36,6 @@ function accountName(accounts: Map<string, Account>, id: string | undefined): st
   return (id && accounts.get(id)?.name) || 'another account'
 }
 
-/** "Meezan → NayaPay" for a transfer, using the other leg when it is on this page. */
 function transferRoute(transaction: Transaction, items: Transaction[], accounts: Map<string, Account>): string {
   const partner = items.find(
     (other) => other.id !== transaction.id && other.transfer_group_id === transaction.transfer_group_id,

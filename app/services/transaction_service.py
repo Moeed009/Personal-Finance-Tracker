@@ -117,8 +117,6 @@ def update_transaction(db: Session, user_id: uuid.UUID, transaction_id: uuid.UUI
             )
             txn.category_id = changes["category_id"]
     elif txn.category_id:
-        # The transaction keeps its category even if that category has since
-        # been deactivated; only re-check it against a changed type.
         current = db.get(Category, txn.category_id)
         if current is not None:
             try:
@@ -138,11 +136,8 @@ def delete_transaction(db: Session, user_id: uuid.UUID, transaction_id: uuid.UUI
         select(func.count()).select_from(Transaction).where(same_group, Transaction.import_batch_id.is_(None))
     )
     if app_made:
-        # A transfer made in the app: both sides go together.
         db.execute(delete(Transaction).where(same_group))
     else:
-        # An ordinary row, or one side of a transfer matched from imported
-        # statements: the other account's row stays, as ordinary income or expense.
         if txn.transfer_group_id is not None:
             db.execute(
                 update(Transaction)

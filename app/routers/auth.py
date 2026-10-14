@@ -6,13 +6,11 @@ from sqlalchemy.orm import Session
 from app.core.exceptions import AuthenticationError
 from app.core.cookies import clear_auth_cookies, set_auth_cookies
 from app.core.database import get_db
-from app.core.security import bearer_scheme, extract_token, refresh_session
+from app.core.security import bearer_scheme, extract_token
 from app.schemas.auth import (
     ForgotPasswordRequest,
     LoginRequest,
     MessageResponse,
-    RefreshRequest,
-    RefreshResponse,
     RegisterRequest,
     ResetPasswordRequest,
     TokenResponse,
@@ -77,16 +75,6 @@ def login(
         access_token=session.access_token,
         expires_in=session.expires_in,
     )
-
-
-@router.post("/refresh", response_model=RefreshResponse)
-def refresh(request: Request, data: RefreshRequest | None = None):
-    """Exchange a refresh token (body or refresh cookie) for a new session."""
-    access_token, claims = refresh_session(request, data.refresh_token if data else None)
-    expires_in = None
-    if claims.get("exp") and claims.get("iat"):
-        expires_in = int(claims["exp"]) - int(claims["iat"])
-    return RefreshResponse(access_token=access_token, expires_in=expires_in)
 
 
 @router.post(

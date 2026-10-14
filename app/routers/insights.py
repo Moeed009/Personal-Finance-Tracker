@@ -53,13 +53,11 @@ def top(
     date_to: date | None = None,
     limit: Annotated[int, Query(ge=1, le=20)] = 5,
 ):
-    """Top merchants and categories by spending for the period."""
     return insight_service.top_items(db, user.id, *_period(date_from, date_to), limit)
 
 
 @router.get("/messages", response_model=list[InsightMessage])
 def messages(user: CurrentUser, db: DbSession, month: date | None = None):
-    """Plain-language insights, e.g. "Food spending is 35% higher than last month"."""
     return insight_service.plain_language_messages(db, user.id, month)
 
 

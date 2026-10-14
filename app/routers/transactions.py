@@ -49,7 +49,6 @@ def delete_transaction(transaction_id: uuid.UUID, user: CurrentUser, db: DbSessi
 
 @router.post("/transactions/own-transfers/detect", response_model=OwnTransfersResult)
 def detect_own_transfers(user: CurrentUser, db: DbSession):
-    """Mark imported rows that move money between the user's own accounts as transfers."""
     marked = own_transfers.mark_own_transfers(db, user.id)
     change_hooks.transactions_changed(db, user.id, {txn.transaction_date for txn in marked})
     return OwnTransfersResult(marked=len(marked))
@@ -57,7 +56,6 @@ def detect_own_transfers(user: CurrentUser, db: DbSession):
 
 @router.post("/transactions/{transaction_id}/not-transfer", status_code=status.HTTP_204_NO_CONTENT)
 def unmark_transfer(transaction_id: uuid.UUID, user: CurrentUser, db: DbSession):
-    """Undo an automatic own-transfer match so the rows count as income or expense again."""
     legs = own_transfers.unmark_transfer(db, user.id, transaction_id)
     change_hooks.transactions_changed(db, user.id, {leg.transaction_date for leg in legs}, legs)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -65,7 +63,6 @@ def unmark_transfer(transaction_id: uuid.UUID, user: CurrentUser, db: DbSession)
 
 @router.post("/transactions/{transaction_id}/mark-transfer", status_code=status.HTTP_204_NO_CONTENT)
 def mark_transfer(transaction_id: uuid.UUID, user: CurrentUser, db: DbSession):
-    """Mark an imported row as money moved between the user's own accounts."""
     legs = own_transfers.mark_as_transfer(db, user.id, transaction_id)
     change_hooks.transactions_changed(db, user.id, {leg.transaction_date for leg in legs})
     return Response(status_code=status.HTTP_204_NO_CONTENT)

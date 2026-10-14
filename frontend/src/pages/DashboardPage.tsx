@@ -29,7 +29,6 @@ function isoDay(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
-/** Days of the month that have passed so far: all of them for past months, none for future ones. */
 function daysElapsed(month: string): { elapsed: number; total: number } {
   const [year, monthNumber] = month.split('-').map(Number)
   const total = new Date(year, monthNumber, 0).getDate()

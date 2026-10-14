@@ -1,22 +1,11 @@
 @import "tailwindcss";
 
-/*
- * Dark premium theme (emerald + gold).
- *
- * The pages use Tailwind's standard colour names (slate, indigo, rose, ...).
- * Instead of rewriting every page, those colour scales are remapped here:
- * - slate is inverted: low numbers are dark surfaces, high numbers light text,
- * - white is the card surface, so text-white on a bright button reads dark,
- * - indigo becomes the emerald brand colour,
- * - amber becomes gold, and rose/emerald/sky/violet get dark tints with light text.
- */
 @theme {
   --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Sora", "Manrope", ui-sans-serif, system-ui, sans-serif;
 
   --color-white: #0e1714;
   --color-black: #000000;
-  /* Real white, for translucent glass layers (bg-glass/5, border-glass/10). */
   --color-glass: #ffffff;
 
   --color-slate-50: #111b17;
@@ -107,13 +96,11 @@ h3 {
   background: rgba(16, 185, 129, 0.35);
 }
 
-/* The dark overlays behind menus and dialogs must stay dark after the slate inversion. */
 .bg-slate-900\/40 {
   background-color: rgba(0, 0, 0, 0.6) !important;
   backdrop-filter: blur(2px);
 }
 
-/* Cards and panels: glass surface with a hairline border. */
 .bg-white {
   background-color: var(--surface-raised) !important;
   backdrop-filter: blur(12px);
@@ -127,7 +114,6 @@ h3 {
   --tw-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 20px 40px -24px rgba(0, 0, 0, 0.7) !important;
 }
 
-/* Primary buttons: emerald gradient with a soft glow. */
 .bg-indigo-600 {
   background-image: linear-gradient(135deg, #34d399, #10b981 55%, #0e9f6e);
 }
@@ -137,7 +123,6 @@ h3 {
   box-shadow: 0 12px 30px -12px rgba(16, 185, 129, 0.8);
 }
 
-/* Inputs */
 input,
 select,
 textarea {
@@ -149,7 +134,6 @@ textarea::placeholder {
   color: #6e8279;
 }
 
-/* Reusable premium pieces */
 .card-lift {
   transition:
     transform 0.25s ease,
@@ -230,7 +214,6 @@ textarea::placeholder {
   }
 }
 
-/* Scrollbars */
 * {
   scrollbar-color: #2a3a33 transparent;
 }
