@@ -25,14 +25,12 @@ def import_transactions(
     account_id: Annotated[uuid.UUID, Form()],
     password: Annotated[str | None, Form(max_length=256)] = None,
 ):
-    """Import a CSV file or a PDF bank statement. `password` is only needed for protected PDFs."""
     return import_service.import_csv(db, user.id, account_id, file, ColumnMapping(), password)
 
 
 @router.get("/imports", response_model=list[ImportBatchRead])
 def list_import_batches(user: CurrentUser, db: DbSession):
     return import_service.list_batches(db, user.id)
-
 
 
 @router.get("/imports/{batch_id}/transactions", response_model=Page[ImportedTransactionRead])

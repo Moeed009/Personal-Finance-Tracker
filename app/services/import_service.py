@@ -197,8 +197,6 @@ def import_csv(
 
         resolver = CategoryResolver(db, user_id)
 
-        # The statement's balance column sets the opening balance only on the
-        # account's first import; later imports would otherwise keep rewriting it.
         is_first_import = not db.scalar(
             select(func.count()).select_from(ImportBatch).where(ImportBatch.account_id == account.id)
         )
@@ -270,8 +268,6 @@ def import_csv(
         storage.remove_files([batch.storage_path])
         raise
 
-    # Moves between the user's own accounts are transfers, not income or
-    # spending. The import is already saved, so a failure here only logs.
     try:
         own_transfers.mark_own_transfers(db, user_id)
     except Exception:

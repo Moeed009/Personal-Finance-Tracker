@@ -29,11 +29,6 @@ def create_alert(
 
 
 def _roll_due_dates(db: Session, user_id: uuid.UUID, today: date) -> None:
-    """Move past due dates of active recurring payments to their next occurrence.
-
-    next_due_date is only set when detection runs, so without this a payment
-    stops raising "due soon" alerts after its first due date passes.
-    """
     stale = db.scalars(
         select(RecurringExpense).where(
             RecurringExpense.user_id == user_id,
@@ -52,7 +47,6 @@ def _roll_due_dates(db: Session, user_id: uuid.UUID, today: date) -> None:
 def _next_occurrence(due: date, frequency: RecurringFrequency) -> date:
     if frequency != RecurringFrequency.MONTHLY:
         return due + timedelta(days=INTERVAL_DAYS[frequency])
-    # Same day next month (clamped: the 31st becomes the 30th or 28th).
     year, month = (due.year + 1, 1) if due.month == 12 else (due.year, due.month + 1)
     return date(year, month, min(due.day, calendar.monthrange(year, month)[1]))
 

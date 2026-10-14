@@ -1,9 +1,3 @@
-"""004_add_transaction_balance
-
-Revision ID: 4e7326941b28
-Revises: 9e93e16f7963
-Create Date: 2026-10-01 10:16:11.261471
-"""
 from typing import Sequence, Union
 
 import sqlalchemy as sa

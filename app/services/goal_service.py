@@ -57,8 +57,6 @@ def update_goal(db: Session, user_id: uuid.UUID, goal_id: uuid.UUID, data: GoalU
         if value is not None:
             setattr(goal, field, value)
     if changes.get("status") is None and changes.get("target_amount") is not None:
-        # Raising the target reopens a completed goal; lowering it below what
-        # is saved completes it. A status the user sets explicitly is kept.
         goal.status = GoalStatus.COMPLETED if goal.saved_amount >= goal.target_amount else GoalStatus.ACTIVE
     db.commit()
     return to_read(goal)

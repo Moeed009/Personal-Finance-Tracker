@@ -1,25 +1,3 @@
-"""Recognise money moved between the user's own accounts.
-
-Bank statements show a move from Meezan to NayaPay as an expense in one
-statement and as income in the other. Counted as spending and earning it
-distorts every total, so these rows are marked as transfers: they get a
-transfer_group_id, which keeps them out of income, expenses, budgets and
-reports while account balances stay correct.
-
-A row counts as an own transfer when its description has a transfer word
-("transfer", "Raast", "IBFT", ...) and the user's own name. Names are
-compared without vowels or spaces, so "Abdul Moeed", "ABDUL MUEED" and
-"Abdulmoeed" all match. When both sides of a move are imported (an
-expense in one account and income of the same amount in another, within a
-few days) they share one transfer group, like a transfer made in the app.
-
-Some statements leave the name out ("Bank Transfer NAYAPAY | 0321...").
-Such a row is still a transfer when it has a transfer word and pairs with
-the other side of the same move in another of the user's accounts: same
-amount, opposite direction, within a day. Rows that match nothing can be
-marked by hand with mark_as_transfer.
-"""
-
 import re
 import uuid
 from collections import Counter
@@ -36,19 +14,15 @@ TRANSFER_WORDS = {
     "transfer", "transferred", "transfers", "raast", "ibft", "p2p", "fund", "funds",
     "sent", "received", "incoming", "outgoing", "ft", "remittance",
 }
-# Set in raw_data when the user says a row is not a transfer, so later
-# detection runs leave it alone.
 NOT_TRANSFER_FLAG = "not_own_transfer"
 
 MIN_NAME_KEY = 4
 MAX_NAME_WORDS = 3
 PAIR_WINDOW = timedelta(days=3)
-# Rows without the user's name need a closer match to count.
 NAMELESS_PAIR_WINDOW = timedelta(days=1)
 
 
 def name_key(text: str) -> str:
-    """Letters only, without vowels: 'Abdul Moeed' and 'Abdul Mueed' -> 'bdlmd'."""
     return re.sub(r"[aeiouy]", "", re.sub(r"[^a-z]", "", text.lower()))
 
 
@@ -85,8 +59,6 @@ def _is_match(expense: Transaction, income: Transaction, window: timedelta) -> b
 
 
 def pair_legs(legs: list[Transaction], window: timedelta = PAIR_WINDOW) -> list[list[Transaction]]:
-    """Group legs into transfers: an expense and an income of the same amount
-    in different accounts within PAIR_WINDOW. Unmatched legs stand alone."""
     expenses = sorted((t for t in legs if t.type == TransactionType.EXPENSE), key=lambda t: t.transaction_date)
     incomes = sorted((t for t in legs if t.type == TransactionType.INCOME), key=lambda t: t.transaction_date)
     used: set[int] = set()
@@ -112,8 +84,6 @@ def pair_legs(legs: list[Transaction], window: timedelta = PAIR_WINDOW) -> list[
 
 
 def _open_imported_rows(db: Session, user_id: uuid.UUID) -> list[Transaction]:
-    """Imported income and expense rows that are not transfers and were not
-    rejected as transfers by the user."""
     return [
         txn for txn in db.scalars(
             select(Transaction).where(
@@ -128,7 +98,6 @@ def _open_imported_rows(db: Session, user_id: uuid.UUID) -> list[Transaction]:
 
 
 def _single_legs(db: Session, user_id: uuid.UUID) -> list[Transaction]:
-    """Imported transfer rows whose other side has not been found yet."""
     single_groups = select(Transaction.transfer_group_id).where(
         Transaction.user_id == user_id,
         Transaction.transfer_group_id.is_not(None),
@@ -153,7 +122,6 @@ def _group(legs: list[Transaction]) -> None:
 
 
 def mark_own_transfers(db: Session, user_id: uuid.UUID) -> list[Transaction]:
-    """Mark the user's own transfers among imported rows; return the rows marked."""
     user = db.get(User, user_id)
 
     if user is None:
@@ -174,12 +142,10 @@ def mark_own_transfers(db: Session, user_id: uuid.UUID) -> list[Transaction]:
     singles = _single_legs(db, user_id)
     marked: list[Transaction] = []
 
-    # Rows naming the user are transfers even when their other side is missing.
     for group in pair_legs(named + singles):
         _group(group)
         marked.extend(txn for txn in group if id(txn) in named_ids)
 
-    # Rows without the name count only when both sides of the move are found.
     nameless_ids = {id(txn) for txn in nameless}
     sizes = Counter(txn.transfer_group_id for txn in named + singles)
     leftover = [txn for txn in named + singles if sizes[txn.transfer_group_id] == 1]
@@ -194,11 +160,6 @@ def mark_own_transfers(db: Session, user_id: uuid.UUID) -> list[Transaction]:
 
 
 def mark_as_transfer(db: Session, user_id: uuid.UUID, transaction_id: uuid.UUID) -> list[Transaction]:
-    """Mark one imported row as a transfer between the user's own accounts.
-
-    The other side of the move (the same amount going the other way in
-    another account within a few days) is linked to it when it can be found.
-    """
     txn = db.scalar(select(Transaction).where(Transaction.id == transaction_id, Transaction.user_id == user_id))
 
     if txn is None:
@@ -239,11 +200,6 @@ def mark_as_transfer(db: Session, user_id: uuid.UUID, transaction_id: uuid.UUID)
 
 
 def unmark_transfer(db: Session, user_id: uuid.UUID, transaction_id: uuid.UUID) -> list[Transaction]:
-    """Undo an automatic match: the rows count as income or expense again.
-
-    Only transfers recognised from imported rows can be undone this way;
-    a transfer made in the app is removed by deleting it.
-    """
     txn = db.scalar(select(Transaction).where(Transaction.id == transaction_id, Transaction.user_id == user_id))
 
     if txn is None:
@@ -266,7 +222,6 @@ def unmark_transfer(db: Session, user_id: uuid.UUID, transaction_id: uuid.UUID) 
 
     for leg in legs:
         leg.transfer_group_id = None
-        # A new dict, so SQLAlchemy sees the change to the JSON column.
         leg.raw_data = {**(leg.raw_data or {}), NOT_TRANSFER_FLAG: True}
 
     db.commit()

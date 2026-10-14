@@ -144,9 +144,6 @@ def delete_account(db: Session, user_id: uuid.UUID, account_id: uuid.UUID, force
         raise ConflictError("Account has transactions. Use force=true to delete the account and all its transactions")
     paths = list(db.scalars(select(ImportBatch.storage_path).where(ImportBatch.account_id == account.id)))
 
-    # Transfers have a second side in another account. A transfer made in the
-    # app goes with this account; a side that came from another account's
-    # imported statement stays, as ordinary income or expense.
     groups = select(Transaction.transfer_group_id).where(
         Transaction.account_id == account.id, Transaction.transfer_group_id.is_not(None)
     )

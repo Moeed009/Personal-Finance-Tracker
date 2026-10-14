@@ -77,11 +77,6 @@ def _refresh_silently(request: Request) -> dict:
 
 
 def refresh_session(request: Request, refresh_token: str | None = None) -> tuple[str, dict]:
-    """Start a new session from a refresh token (given, or the refresh cookie).
-
-    Returns the new access token and its claims. The new cookies are set on
-    the response by the middleware in app/main.py.
-    """
     refresh_token = refresh_token or request.cookies.get(REFRESH_COOKIE)
 
     if not refresh_token:
@@ -133,7 +128,6 @@ def get_current_user(
     token = extract_token(request, credentials)
 
     if not token:
-       
         if credentials is None and request.cookies.get(REFRESH_COOKIE):
             logger.info("Access cookie missing, refreshing the session")
             claims = _refresh_silently(request)

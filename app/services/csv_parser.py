@@ -92,18 +92,12 @@ TYPE_WORDS = {
     "withdrawal": TransactionType.EXPENSE,
 }
 
-# Words inside a bank's own type text ("Raast In", "IBFT Out", "Funds Received")
-# that say which way the money moved.
 INCOME_WORDS = {"in", "cr", "credit", "credited", "deposit", "received", "receive", "refund", "incoming"}
 EXPENSE_WORDS = {
     "out", "dr", "debit", "debited", "withdrawal", "withdrawn", "sent", "send",
     "paid", "payment", "purchase", "pos", "charges", "fee", "outgoing",
 }
 
-# Banks name the same column in many ways ("Txn Date", "Transaction Details",
-# "Withdrawal Amount", "Debit (PKR)"). A header is classified by the words it
-# contains; the order matters, so "Debit Amount" is a debit column, not an
-# amount column.
 HEADER_KEYWORDS = (
     ("balance", ("balance",)),
     ("type", ("dr/cr", "cr/dr", "d/c", "c/d", "type", "kind")),
@@ -126,7 +120,6 @@ def normalize_header(name: str) -> str:
 
 
 def classify_header(name: str) -> str | None:
-    """Return which field a header holds (date, description, amount, ...)."""
     value = normalize_header(name)
 
     if not value:
@@ -145,7 +138,6 @@ def classify_header(name: str) -> str | None:
 
 
 def looks_like_header(cells: list[str]) -> bool:
-    """A header row names a date and a description column and holds no figures."""
     named = [cell for cell in cells if cell and cell.strip()]
 
     if not named or any(ch.isdigit() for cell in named for ch in cell):
@@ -260,13 +252,6 @@ def resolve_columns(
 
 
 def parse_amount(text: str) -> Decimal:
-    """Read amounts as banks write them.
-
-    A minus anywhere before the figure ("Rs -300", "- PKR100.00"), a trailing
-    minus ("300-") or brackets ("(75.25)") make it negative. "1,250.50" and
-    "1.234,56" are both read correctly. A comma alone separates thousands
-    ("1,250") unless only one or two digits follow it ("12 345,67").
-    """
     value = text.strip()
     match = re.search(r"\d(?:[\d.,]|\s(?=\d{3}\b))*", value)
 
@@ -287,7 +272,6 @@ def parse_amount(text: str) -> Decimal:
     elif digits.count(".") > 1:
         digits = digits.replace(".", "")
     elif "," in digits and len(digits.rsplit(",", 1)[1]) <= 2:
-        # A lone comma before one or two digits is a decimal comma ("12 345,67").
         digits = digits.replace(",", "")[: -len(digits.rsplit(",", 1)[1])] + "." + digits.rsplit(",", 1)[1]
     else:
         digits = digits.replace(",", "")
@@ -317,8 +301,6 @@ def parse_date(
         else DATE_FORMATS
     )
 
-    # Statements often append a time ("08 Sep 2026 03:26 PM"), so also try
-    # the value with the time part removed.
     parts = value.replace("T", " ").replace(",", " ").split()
     candidates = [value, " ".join(parts)]
 
@@ -423,8 +405,6 @@ def _parse_row(
                 row[mapping.type].strip().lower()
             ) or _type_from_text(row[mapping.type])
 
-            # Bank-specific types ("Raast In", "POS") are not income/expense
-            # words; a signed amount (+270 / -270) already tells us which.
             if txn_type is None and _has_sign(
                 row[mapping.amount]
             ):
@@ -631,7 +611,6 @@ def _is_zero_or_empty_amount(
 
 
 def _type_from_suffix(text: str) -> TransactionType | None:
-    """'1,500.00 Dr' is money out and '1,500.00 Cr' is money in."""
     match = re.search(r"\b(dr|cr)\.?\s*$", text.strip(), re.IGNORECASE)
 
     if not match:
@@ -661,13 +640,6 @@ def _find_header_index(
     records: list[list[str]],
     requested: ColumnMapping,
 ) -> int | None:
-    """Locate the header row.
-
-    Bank statements often start with account details (name, IBAN, statement
-    period) before the real table, so the header is the first row that names
-    a date column and a description column. If no row qualifies, fall back to
-    the first non-empty row so the usual error is reported.
-    """
     first_non_empty = None
     wanted = {
         name.strip().lower()

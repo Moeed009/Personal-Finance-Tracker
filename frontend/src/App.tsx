@@ -7,7 +7,6 @@ import { AppLayout } from '@/components/AppLayout'
 import { ProtectedRoute, PublicOnlyRoute } from '@/components/ProtectedRoute'
 import { PageLoader } from '@/components/PageLoader'
 
-// Each page is its own chunk, so the first visit downloads only what it shows.
 const LoginPage = lazy(() => import('@/pages/LoginPage'))
 const RegisterPage = lazy(() => import('@/pages/RegisterPage'))
 const ForgotPasswordPage = lazy(() => import('@/pages/ForgotPasswordPage'))

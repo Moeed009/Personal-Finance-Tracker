@@ -1,4 +1,3 @@
-from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
 from uuid import UUID
 
@@ -11,7 +10,6 @@ class RegisterRequest(BaseModel):
     
 
 class LoginRequest(BaseModel):
-    
     email: EmailStr
     password: str
 
@@ -25,19 +23,8 @@ class TokenResponse(BaseModel):
     expires_in: int | None = None
     token_type: str = "bearer"
 
-class RefreshRequest(BaseModel):
-    refresh_token: str | None = Field(default=None, min_length=1, max_length=1024)
-
-
-class RefreshResponse(BaseModel):
-    access_token: str
-    expires_in: int | None = None
-    token_type: str = "bearer"
-
-
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
-
 
 
 class MessageResponse(BaseModel):
