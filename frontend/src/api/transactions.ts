@@ -8,5 +8,6 @@ export const transactionsApi = {
   remove: (id: string) => api.delete(`/transactions/${id}`),
   transfer: (input: TransferInput) => api.post<TransferResult>('/transfers', input),
   detectOwnTransfers: () => api.post<{ marked: number }>('/transactions/own-transfers/detect'),
+  markTransfer: (id: string) => api.post<void>(`/transactions/${id}/mark-transfer`),
   notTransfer: (id: string) => api.post<void>(`/transactions/${id}/not-transfer`),
 }

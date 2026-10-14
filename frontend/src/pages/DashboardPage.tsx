@@ -1,4 +1,4 @@
-import { ArrowUpRight, PiggyBank, TrendingDown, TrendingUp, Wallet } from 'lucide-react'
+import { CalendarClock, Gauge, Landmark, TrendingDown, TrendingUp, Wallet } from 'lucide-react'
 import { BudgetStatusCard } from '@/components/BudgetStatusCard'
 import { Button } from '@/components/Button'
 import { MonthSwitcher } from '@/components/MonthSwitcher'
@@ -11,9 +11,10 @@ import { UnusualSpendingCard } from '@/components/UnusualSpendingCard'
 import { useAccounts } from '@/hooks/useAccounts'
 import { useAuth } from '@/hooks/useAuth'
 import { useMonthSummary } from '@/hooks/useInsights'
+import { useRecurring } from '@/hooks/useRecurring'
 import { useMonthParam } from '@/hooks/useMonthParam'
 import { formatMoney } from '@/lib/format'
-import { monthLabel } from '@/lib/months'
+import { currentMonth, monthLabel, shiftMonth } from '@/lib/months'
 
 function greeting(): string {
   const hour = new Date().getHours()
@@ -22,25 +23,101 @@ function greeting(): string {
   return 'Good evening'
 }
 
-function SavingsRing({ percent, overspent }: { percent: number; overspent: boolean }) {
-  const shown = overspent ? 0 : Math.min(Math.max(percent, 0), 100)
+const UPCOMING_DAYS = 30
+
+function isoDay(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+/** Days of the month that have passed so far: all of them for past months, none for future ones. */
+function daysElapsed(month: string): { elapsed: number; total: number } {
+  const [year, monthNumber] = month.split('-').map(Number)
+  const total = new Date(year, monthNumber, 0).getDate()
+  const current = currentMonth()
+  if (month < current) return { elapsed: total, total }
+  if (month > current) return { elapsed: 0, total }
+  return { elapsed: new Date().getDate(), total }
+}
+
+function SpendingPaceCard({ month, currency }: { month: string; currency: string }) {
+  const summary = useMonthSummary(month)
+  const previous = useMonthSummary(shiftMonth(month, -1))
+
+  const spent = summary.data ? Number(summary.data.expense) : 0
+  const lastMonth = previous.data ? Number(previous.data.expense) : 0
+  const { elapsed, total } = daysElapsed(month)
+  const isCurrent = month === currentMonth()
+  const dailyAverage = elapsed > 0 ? spent / elapsed : 0
+  const projected = isCurrent ? dailyAverage * total : spent
+  const share = lastMonth > 0 ? (spent / lastMonth) * 100 : 0
+  const change = lastMonth > 0 ? ((projected - lastMonth) / lastMonth) * 100 : null
 
   return (
-    <div
-      role="img"
-      aria-label={overspent ? 'Spent more than earned' : `${percent.toFixed(0)} percent of income saved`}
-      className="flex h-28 w-28 shrink-0 items-center justify-center rounded-full"
-      style={{ background: `conic-gradient(#34d399 0 ${shown}%, rgba(255,255,255,0.07) ${shown}% 100%)` }}
+    <section
+      aria-label="Spending pace"
+      className="card-lift animate-rise flex flex-col gap-5 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200"
     >
-      <div className="flex h-[5.5rem] w-[5.5rem] flex-col items-center justify-center rounded-full bg-[#0e1714]">
-        {overspent ? (
-          <span className="font-display text-lg font-bold text-rose-700">Over</span>
-        ) : (
-          <span className="font-display text-2xl font-bold text-slate-900">{percent.toFixed(0)}%</span>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="flex items-center gap-2 text-base font-semibold text-slate-700">
+          <Gauge size={16} className="text-amber-700" />
+          Spending pace
+        </h2>
+        {change !== null && summary.data && (
+          <span
+            className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+              change > 5
+                ? 'bg-rose-500/15 text-rose-700'
+                : change < -5
+                  ? 'bg-emerald-500/15 text-emerald-700'
+                  : 'bg-amber-500/15 text-amber-700'
+            }`}
+          >
+            {Math.abs(change) < 1
+              ? 'Same as last month'
+              : `${Math.abs(change).toFixed(0)}% ${change > 0 ? 'above' : 'below'} last month`}
+          </span>
         )}
-        <span className="text-[11px] text-slate-500">{overspent ? 'income' : 'of income'}</span>
       </div>
-    </div>
+
+      {summary.isLoading || previous.isLoading ? (
+        <div className="h-28 animate-pulse rounded-2xl bg-slate-100" />
+      ) : (
+        <>
+          <div>
+            <p className="font-display text-3xl font-bold tracking-tight text-slate-900">
+              {formatMoney(dailyAverage.toFixed(2), currency)}
+            </p>
+            <p className="mt-1 text-sm text-slate-500">
+              average spent per day{elapsed > 0 ? ` over ${elapsed} day${elapsed === 1 ? '' : 's'}` : ''}
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <div
+              className="h-2.5 overflow-hidden rounded-full bg-glass/10"
+              role="img"
+              aria-label={
+                lastMonth > 0 ? `${share.toFixed(0)} percent of last month's spending used` : 'No spending last month'
+              }
+            >
+              <div
+                className={`h-full rounded-full ${share > 100 ? 'bg-rose-500' : 'bg-gradient-to-r from-emerald-500 to-amber-500'}`}
+                style={{ width: `${Math.min(share, 100)}%` }}
+              />
+            </div>
+            <div className="flex justify-between gap-3 text-xs text-slate-500">
+              <span>
+                {isCurrent ? 'On track for ' : 'Spent '}
+                <b className="font-semibold text-slate-700">{formatMoney(projected.toFixed(2), currency)}</b>
+              </span>
+              <span>
+                Last month <b className="font-semibold text-slate-700">{formatMoney(lastMonth.toFixed(2), currency)}</b>
+              </span>
+            </div>
+          </div>
+        </>
+      )}
+    </section>
   )
 }
 
@@ -52,8 +129,15 @@ export default function DashboardPage() {
   const summary = useMonthSummary(month)
   const accounts = useAccounts()
 
-  const savings = summary.data ? Number(summary.data.savings) : 0
-  const savingsRate = summary.data ? Number(summary.data.savings_rate_percent) : 0
+  const recurring = useRecurring()
+
+  const today = new Date()
+  const horizon = new Date(today.getFullYear(), today.getMonth(), today.getDate() + UPCOMING_DAYS)
+  const upcoming = (recurring.data?.items ?? []).filter(
+    (item) => item.status !== 'DISMISSED' && item.next_due_date >= isoDay(today) && item.next_due_date <= isoDay(horizon),
+  )
+  const upcomingTotal = upcoming.reduce((sum, item) => sum + Number(item.avg_amount), 0)
+  const accountCount = accounts.data?.accounts.length ?? 0
   const firstName = user?.full_name.split(' ')[0] ?? ''
   const topAccounts = accounts.data?.accounts.slice(0, 4) ?? []
 
@@ -90,18 +174,10 @@ export default function DashboardPage() {
                   {accounts.data ? formatMoney(accounts.data.total_balance, currency) : '—'}
                 </span>
               )}
-              {summary.data && (
-                <span
-                  className={`inline-flex items-center gap-1.5 self-start rounded-full border px-3 py-1.5 text-xs font-bold ${
-                    savings >= 0
-                      ? 'border-emerald-500/30 bg-black/30 text-emerald-800'
-                      : 'border-rose-400/40 bg-black/30 text-rose-700'
-                  }`}
-                >
-                  <ArrowUpRight size={14} className={savings >= 0 ? '' : 'rotate-90'} />
-                  {savings >= 0
-                    ? `${formatMoney(savings, currency)} saved this month`
-                    : `${formatMoney(Math.abs(savings), currency)} more spent than earned`}
+              {accountCount > 0 && (
+                <span className="inline-flex items-center gap-1.5 self-start rounded-full border border-emerald-500/30 bg-black/30 px-3 py-1.5 text-xs font-bold text-emerald-800">
+                  <Landmark size={14} />
+                  Across {accountCount} account{accountCount === 1 ? '' : 's'}
                 </span>
               )}
             </div>
@@ -124,45 +200,7 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        <section
-          aria-label="Savings rate"
-          className="card-lift animate-rise flex flex-col gap-5 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200"
-        >
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-slate-700">Savings rate</h2>
-            {summary.data && (
-              <span
-                className={`rounded-full px-2.5 py-1 text-xs font-bold ${
-                  savings < 0
-                    ? 'bg-rose-500/15 text-rose-700'
-                    : savingsRate >= 20
-                      ? 'bg-emerald-500/15 text-emerald-700'
-                      : 'bg-amber-500/15 text-amber-700'
-                }`}
-              >
-                {savings < 0 ? 'Overspent' : savingsRate >= 20 ? 'On track' : 'Below 20%'}
-              </span>
-            )}
-          </div>
-          {summary.isLoading ? (
-            <div className="h-28 animate-pulse rounded-2xl bg-slate-100" />
-          ) : (
-            <div className="flex items-center gap-5">
-              <SavingsRing percent={savingsRate} overspent={savings < 0} />
-              <div className="flex flex-col gap-1.5">
-                <span
-                  className={`font-display text-xl font-semibold ${savings >= 0 ? 'text-slate-900' : 'text-rose-700'}`}
-                >
-                  {formatMoney(Math.abs(savings), currency)}
-                </span>
-                <span className="text-sm leading-relaxed text-slate-500">
-                  {savings >= 0 ? 'saved from ' : 'more spent than '}
-                  {summary.data ? formatMoney(summary.data.income, currency) : '—'} income
-                </span>
-              </div>
-            </div>
-          )}
-        </section>
+        <SpendingPaceCard month={month} currency={currency} />
       </div>
 
       <div className="mt-5 grid gap-5 sm:grid-cols-3">
@@ -185,16 +223,15 @@ export default function DashboardPage() {
         />
 
         <StatCard
-          label="Savings"
-          icon={PiggyBank}
-          tone={savings > 0 ? 'positive' : savings < 0 ? 'negative' : 'default'}
-          isLoading={summary.isLoading}
-          value={summary.data ? formatMoney(savings, currency) : undefined}
+          label="Upcoming bills"
+          icon={CalendarClock}
+          isLoading={recurring.isLoading}
+          value={recurring.data ? formatMoney(upcomingTotal.toFixed(2), currency) : undefined}
           hint={
-            summary.data
-              ? savings < 0
-                ? 'Spent more than earned'
-                : `${savingsRate.toFixed(0)}% of income saved`
+            recurring.data
+              ? upcoming.length > 0
+                ? `${upcoming.length} recurring payment${upcoming.length === 1 ? '' : 's'} in the next ${UPCOMING_DAYS} days`
+                : `Nothing due in the next ${UPCOMING_DAYS} days`
               : undefined
           }
         />

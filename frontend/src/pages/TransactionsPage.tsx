@@ -57,6 +57,18 @@ export default function TransactionsPage() {
     onError: (error) => setNotice({ tone: 'error', text: error.message }),
   })
 
+  const markTransfer = useMutation({
+    mutationFn: (transaction: Transaction) => transactionsApi.markTransfer(transaction.id),
+    onSuccess: async () => {
+      await invalidateFinanceData(queryClient)
+      setNotice({
+        tone: 'ok',
+        text: 'Marked as a transfer between your own accounts. The other side was linked if it was found. It no longer counts as income or expense.',
+      })
+    },
+    onError: (error) => setNotice({ tone: 'error', text: error.message }),
+  })
+
   const updateFilters = useCallback(
     (patch: FilterPatch) => {
       setSearchParams(
@@ -209,6 +221,9 @@ export default function TransactionsPage() {
                 onDelete={setDeleting}
                 onNotTransfer={(transaction) => {
                   if (!notTransfer.isPending) notTransfer.mutate(transaction)
+                }}
+                onMarkTransfer={(transaction) => {
+                  if (!markTransfer.isPending) markTransfer.mutate(transaction)
                 }}
               />
               <Pagination

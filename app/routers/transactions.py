@@ -63,6 +63,14 @@ def unmark_transfer(transaction_id: uuid.UUID, user: CurrentUser, db: DbSession)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+@router.post("/transactions/{transaction_id}/mark-transfer", status_code=status.HTTP_204_NO_CONTENT)
+def mark_transfer(transaction_id: uuid.UUID, user: CurrentUser, db: DbSession):
+    """Mark an imported row as money moved between the user's own accounts."""
+    legs = own_transfers.mark_as_transfer(db, user.id, transaction_id)
+    change_hooks.transactions_changed(db, user.id, {leg.transaction_date for leg in legs})
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.post("/transfers", response_model=TransferRead, status_code=status.HTTP_201_CREATED)
 def create_transfer(data: TransferCreate, user: CurrentUser, db: DbSession):
     group_id, outgoing, incoming = transaction_service.create_transfer(db, user.id, data)
